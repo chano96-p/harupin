@@ -1,24 +1,51 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* 면 — 카드는 그림자 없이 보더로만 구분 */
+  --color-canvas: #fafaf8;
+  --color-surface: #ffffff;
+  --color-line: #e8e6e0;
+  --color-line-strong: #c9c7c0;
+  --color-surface-hover: #f4f3ef;  /* 버튼·행 hover 배경 */
+
+  /* 글자 */
+  --color-ink: #1f1f1d;
+  --color-ink-soft: #6f6d65;   /* 본문·보조 텍스트 */
+  --color-ink-mute: #8a8880;   /* 비본문 라벨 전용 */
+
+  /* 카테고리
+     기본 = 핀 배경(흰 순번) / tint = 뱃지 배경 / deep = tint 위 글자·숫자 */
+  --color-food: #d85a30;
+  --color-food-tint: #fbe7df;
+  --color-food-deep: #b0431f;
+
+  --color-sight: #1d9e75;
+  --color-sight-tint: #e3f1eb;
+  --color-sight-deep: #16724f;
+
+  --color-activity: #7f77dd;
+  --color-activity-tint: #e9e7fa;
+  --color-activity-deep: #4e45b8;
+
+  --color-lodging: #888780;
+  --color-lodging-tint: #edece7;
+  --color-lodging-deep: #5f5e58;
+
+  /* Pretendard 단일 폰트.
+     --font-pretendard 는 layout.tsx 의 next/font 가 <html> 에 심는다. */
+  --font-sans: var(--font-pretendard), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+
+  /* 그림자는 지도 위 오버레이(검색창·바텀시트)에만 예외적으로 사용 */
+  --shadow-overlay: 0 1px 3px rgb(31 31 29 / 0.06);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* 다크모드는 범위 제외. */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
 }
