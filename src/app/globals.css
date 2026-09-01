@@ -6,6 +6,7 @@
   --color-surface: #ffffff;
   --color-line: #e8e6e0;
   --color-line-strong: #c9c7c0;
+  --color-control-line: #dcd9d1; /* 버튼·인풋 등 입력 컨트롤 테두리 */
   --color-surface-hover: #f4f3ef; /* 버튼·행 hover 배경 */
 
   /* 글자 */
@@ -34,6 +35,14 @@
   /* Pretendard 단일 폰트.
      --font-pretendard 는 layout.tsx 의 next/font 가 <html> 에 심는다. */
   --font-sans: var(--font-pretendard), ui-sans-serif, system-ui, sans-serif;
+
+  /* 지도 팔레트. 로그인 화면의 정적 지도 배경에 쓰고, 동시에
+     Google Cloud Console 의 저채도 커스텀 맵 스타일(§9 미결 항목)을 만들 때
+     맞출 기준값이다. 실제 지도가 뜨는 화면에서는 Google Map 이 이 자리를 대신한다. */
+  --color-map-land: #eae9e3;
+  --color-map-water: #dce4e7;
+  --color-map-park: #e1e7de;
+  --color-map-road: #f5f4f1;
 
   --radius-card: 12px;
   --radius-control: 8px;
