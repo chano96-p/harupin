@@ -416,11 +416,4 @@ enabled = true
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
-# 이 파일 원문 주석: "Required for local sign in with Google auth."
-#
-# nonce 검사는 ID 토큰 replay 방어이므로 끄는 것이 공짜가 아니다. 다만
-#   1) 이 설정은 로컬 스택 전용이다. 원격 프로젝트의 provider 설정은 대시보드에서
-#      따로 관리되므로 프로덕션 인증에는 영향이 없다.
-#   2) 앱은 authorization code flow(signInWithOAuth)를 쓰고 code 교환은 서버에서 한다.
-# 로컬에서 false 로도 로그인이 되는 것이 확인되면 false 로 되돌릴 것.
-skip_nonce_check = true
+skip_nonce_check = false
