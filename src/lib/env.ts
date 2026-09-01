@@ -9,11 +9,6 @@ import { z } from "zod";
  * - runtimeEnv: 전 항목을 리터럴로 다시 나열한다. Next 가 빌드 시점에
  *   `process.env.NEXT_PUBLIC_XXX` 라는 리터럴만 값으로 치환하기 때문에
  *   구조분해·동적 접근으로는 줄일 수 없다 (T3 Env 문서도 같은 설명).
- *
- * .optional() 은 "그 값이 생기는 단계 전까지"의 임시 표시다:
- * - SUPABASE_*             → 1단계 #2 (인증) 에서 값 채우고 .optional() 제거
- * - MAPS_SERVER_KEY        → 1단계 #4 (검색 프록시) 에서 제거
- * 제거하면 그 시점부터 값 누락이 빌드 실패로 잡힌다.
  */
 export const env = createEnv({
   server: {
@@ -22,8 +17,8 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_MAPS_KEY: z.string().min(1),
-    NEXT_PUBLIC_SUPABASE_URL: z.url().optional(),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_SUPABASE_URL: z.url(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   },
   runtimeEnv: {
     MAPS_SERVER_KEY: process.env.MAPS_SERVER_KEY,
