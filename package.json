@@ -9,21 +9,28 @@
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
-    "check": "pnpm lint && pnpm build"
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm lint && pnpm format:check && pnpm build"
   },
   "dependencies": {
+    "@t3-oss/env-nextjs": "^0.13.11",
+    "@vis.gl/react-google-maps": "^1.9.0",
     "next": "16.3.3",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/google.maps": "^3.66.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "prettier": "^3.9.6",
     "supabase": "^2.116.0",
     "tailwindcss": "^4",
     "typescript": "^5"

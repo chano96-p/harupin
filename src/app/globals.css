@@ -6,12 +6,12 @@
   --color-surface: #ffffff;
   --color-line: #e8e6e0;
   --color-line-strong: #c9c7c0;
-  --color-surface-hover: #f4f3ef;  /* 버튼·행 hover 배경 */
+  --color-surface-hover: #f4f3ef; /* 버튼·행 hover 배경 */
 
   /* 글자 */
   --color-ink: #1f1f1d;
-  --color-ink-soft: #6f6d65;   /* 본문·보조 텍스트 */
-  --color-ink-mute: #8a8880;   /* 비본문 라벨 전용 */
+  --color-ink-soft: #6f6d65; /* 본문·보조 텍스트 */
+  --color-ink-mute: #8a8880; /* 비본문 라벨 전용 */
 
   /* 카테고리
      기본 = 핀 배경(흰 순번) / tint = 뱃지 배경 / deep = tint 위 글자·숫자 */

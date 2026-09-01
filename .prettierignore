@@ -1,0 +1,2 @@
+# pnpm 이 생성·관리한다. 포맷하면 다음 install 에서 되돌아가 diff 만 생긴다.
+pnpm-lock.yaml

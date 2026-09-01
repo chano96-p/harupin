@@ -10,7 +10,7 @@ const pretendard = localFont({
   weight: "45 930",
   variable: "--font-pretendard",
   display: "swap",
-  adjustFontFallback: false
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
@@ -20,10 +20,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="ko"
-      className={`${pretendard.variable} h-full antialiased`}
-    >
+    <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
