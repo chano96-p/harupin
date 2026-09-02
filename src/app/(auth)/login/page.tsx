@@ -18,9 +18,6 @@ export default async function LoginPage({
     <main className="flex min-h-dvh flex-col bg-canvas lg:flex-row">
       <MapBackdrop />
 
-      {/* 시안(2b)의 패널:지도 = 380:520 ≒ 42:58 비율을 폭에 상관없이 유지한다.
-          380px 로 고정하면 넓은 화면에서 지도가 70% 를 넘어 화면을 잡아먹는다.
-          다만 패널이 무한정 넓어지면 글줄이 길어지므로 안쪽 콘텐츠는 폭을 묶는다. */}
       <div className="flex flex-1 flex-col gap-6 px-6 pt-8 pb-10 lg:order-first lg:w-[42%] lg:max-w-180 lg:min-w-100 lg:flex-none lg:items-center lg:gap-7 lg:border-r lg:border-line lg:bg-surface lg:px-10 lg:py-12">
         <Wordmark className="text-[19px] lg:w-full lg:max-w-75 lg:text-[20px]" />
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
+import { DB_SCHEMA } from "@/lib/supabase/schema";
 
 /**
  * 서버 컴포넌트·Route Handler·Server Action 용 클라이언트.
@@ -13,6 +14,7 @@ export async function createClient() {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      db: { schema: DB_SCHEMA },
       cookies: {
         getAll() {
           return cookieStore.getAll();
