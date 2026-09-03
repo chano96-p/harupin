@@ -4,6 +4,10 @@ import { z } from "zod";
 /**
  * 환경변수 단일 진입점. 코드에서 process.env 를 직접 읽지 않고 env.XXX 만 쓴다.
  *
+ * MAPS_SERVER_KEY 는 필수다. 장소 검색 프록시(/api/places/*)가 이 값으로
+ * Google 에 직접 호출하므로, 없으면 빌드 시점에 fail-fast 하는 게 맞다 —
+ * 배포 후 첫 검색에서야 500 으로 드러나는 것보다 낫다.
+ *
  * - server: 서버 전용. 클라이언트에서 접근하면 명확한 에러로 throw 된다.
  * - client: 브라우저 노출. NEXT_PUBLIC_ 접두사를 라이브러리가 강제한다.
  * - runtimeEnv: 전 항목을 리터럴로 다시 나열한다. Next 가 빌드 시점에
@@ -12,7 +16,7 @@ import { z } from "zod";
  */
 export const env = createEnv({
   server: {
-    MAPS_SERVER_KEY: z.string().min(1).optional(),
+    MAPS_SERVER_KEY: z.string().min(1),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   },
   client: {

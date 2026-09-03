@@ -59,6 +59,14 @@ export async function proxy(request: NextRequest) {
   const isPublic = isPublicRoute(pathname);
 
   if (!user && !isPublic) {
+    // API 라우트는 페이지가 아니다. HTML 리다이렉트를 보내면 fetch() 가 그걸
+    // JSON 인 줄 알고 파싱하려다 깨진다 — 명확한 401 JSON 으로 끊는다.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "로그인이 필요합니다." },
+        { status: 401 },
+      );
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

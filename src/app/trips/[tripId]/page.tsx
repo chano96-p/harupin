@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/AppHeader";
+import { TripMapSearch } from "@/components/trips/TripMapSearch";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * 일정 편집 화면(시안 1a·1b)의 자리. 지금은 생성된 일차를 확인하는 최소 화면이다.
- * 지도·장소 리스트·dnd 는 로드맵 6·7번에서 이 자리에 들어온다.
+ * 일정 편집 화면(시안 1a·1b)의 자리.
+ * 지금은 일차 목록 + 장소 검색(4번)까지다. 검색 결과는 저장되지 않는 미리보기다.
+ * 저장(5번)·정식 스플릿 레이아웃과 순번 핀(6번)·dnd(7번)는 다음 단계에 들어온다.
  */
 export default async function TripPage({
   params,
@@ -44,6 +46,8 @@ export default async function TripPage({
           </h1>
           <span className="text-[13px] text-ink-soft">{days.length}일차</span>
         </div>
+        <TripMapSearch />
+
         <ul className="flex flex-col gap-2">
           {days.map((d) => (
             <li
