@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { MAX_TRIP_DAYS } from "@/lib/trips/limits";
+import { MAX_TRIP_DAYS, MAX_TRIP_TITLE } from "@/lib/trips/limits";
 
 export type CreateTripState = { error?: string };
 
@@ -17,6 +17,11 @@ export async function createTrip(
   const endDate = String(formData.get("endDate") ?? "");
 
   if (!title) return { error: "여행 제목을 입력해주세요." };
+  // 입력창의 maxLength 는 클라이언트 전용이라 Server Action 직접 호출로 우회된다.
+  // addPlace 와 같은 수준으로 서버에서도 본다 (DB CHECK 가 최종 방어선).
+  if (title.length > MAX_TRIP_TITLE) {
+    return { error: `여행 제목은 ${MAX_TRIP_TITLE}자까지 가능합니다.` };
+  }
   if (!startDate || !endDate) return { error: "기간을 선택해주세요." };
   if (endDate < startDate) return { error: "종료일이 시작일보다 빠릅니다." };
 

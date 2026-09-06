@@ -7,16 +7,19 @@ import {
   PlaceSearch,
   type SelectedPlace,
 } from "@/components/places/PlaceSearch";
+import { AddPlaceForm, type DayOption } from "@/components/trips/AddPlaceForm";
 
 /**
- * 로드맵 4번 자리 — 검색 → 지도에 핀만 확인한다. 아직 저장하지 않는다
- * (Day 에 저장은 5번). 그래서 선택 상태는 이 컴포넌트 안 useState 로만 두고,
- * 새로고침하면 사라지는 게 지금은 맞는 동작이다.
- *
- * 시안 1a(데스크톱 스플릿 뷰)의 정식 레이아웃은 6번에서 만든다. 지금은
- * 검색이 실제로 동작하는지 보여주는 임시 자리다.
+ * 로드맵 4~5번 자리 — 검색 → 지도에 핀 → Day 에 저장.
+ * 시안 1a(데스크톱 스플릿 뷰)의 정식 레이아웃은 6번에서 만든다.
  */
-export function TripMapSearch() {
+export function TripMapSearch({
+  tripId,
+  days,
+}: {
+  tripId: string;
+  days: DayOption[];
+}) {
   const [selected, setSelected] = useState<SelectedPlace | null>(null);
 
   return (
@@ -29,10 +32,14 @@ export function TripMapSearch() {
       </div>
 
       {selected ? (
-        <p className="text-[13px] text-ink-soft">
-          <span className="font-semibold text-ink">{selected.name}</span> 선택됨
-          · 아직 저장되지 않았습니다.
-        </p>
+        <AddPlaceForm
+          tripId={tripId}
+          days={days}
+          place={selected}
+          // 목록 갱신은 addPlace 의 revalidatePath 가 이미 처리한다.
+          // 여기서 router.refresh() 까지 부르면 RSC 왕복이 한 번 더 생긴다.
+          onSaved={() => setSelected(null)}
+        />
       ) : null}
     </div>
   );

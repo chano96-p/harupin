@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createTrip, type CreateTripState } from "@/lib/actions/trips";
-import { MAX_TRIP_DAYS } from "@/lib/trips/limits";
+import { MAX_TRIP_DAYS, MAX_TRIP_TITLE } from "@/lib/trips/limits";
 
 const FIELD =
   "h-12 w-full rounded-control border border-control-line bg-surface px-3.25 text-[15px] text-ink outline-none placeholder:text-ink-mute focus:border-ink lg:h-10.5 lg:px-3 lg:text-[14px]";
@@ -88,7 +88,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
           id="title"
           name="title"
           required
-          maxLength={100}
+          maxLength={MAX_TRIP_TITLE}
           placeholder="예: 제주 봄 3박 4일"
           className={FIELD}
         />
