@@ -44,3 +44,8 @@ next-env.d.ts
 # supabase (로컬 스택 작업 디렉터리)
 supabase/.branches
 supabase/.temp
+
+# supabase CA 인증서 (공개 정보지만 레포에 두지 않음)
+# 없으면 pnpm db:deploy 가 받는 곳을 안내하며 멈춘다.
+# 대시보드 → Settings → Database → SSL Configuration
+supabase/prod-ca-2021.crt

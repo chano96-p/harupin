@@ -11,7 +11,11 @@
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm lint && pnpm format:check && pnpm build"
+    "check": "pnpm lint && pnpm format:check && pnpm build",
+    "db:list": "supabase migration list",
+    "db:status": "node --env-file-if-exists=.env scripts/db-deploy.mjs status",
+    "db:deploy": "node --env-file-if-exists=.env scripts/db-deploy.mjs deploy",
+    "db:mark-applied": "node --env-file-if-exists=.env scripts/db-deploy.mjs mark-applied"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
@@ -27,11 +31,13 @@
     "@tailwindcss/postcss": "^4",
     "@types/google.maps": "^3.66.0",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "pg": "^8.23.0",
     "prettier": "^3.9.6",
     "supabase": "^2.116.0",
     "tailwindcss": "^4",
