@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 
 import { Wordmark } from "@/components/brand/Wordmark";
 import { ItineraryPanel } from "@/components/itinerary/ItineraryPanel";
@@ -11,6 +11,7 @@ import {
   type SelectedPlace,
 } from "@/components/places/PlaceSearch";
 import { AddPlaceForm } from "@/components/trips/AddPlaceForm";
+import { deletePlace } from "@/lib/actions/places";
 import { formatTripRange } from "@/lib/trips/format";
 
 export type EditorPlace = {
@@ -34,6 +35,8 @@ export type EditorTrip = {
   region: string | null;
 };
 
+const UNDO_MS = 5000;
+
 /**
  * 일정 편집 화면. 시안 1a(데스크톱 스플릿 뷰) / 1b(모바일 지도 + 바텀시트).
  *
@@ -56,7 +59,37 @@ export function TripEditor({
   // 늦게 끝난 저장이 그사이 고른 장소와 보던 탭을 덮지 않도록, 완료 시점의 선택과 비교한다.
   const selectedIdRef = useRef<string | null>(null);
 
-  const activeDay = days.find((d) => d.id === activeDayId) ?? days[0];
+  // 삭제는 되돌리기(시안 3j)를 위해 UNDO_MS 뒤에 실제로 보낸다. 그동안은 화면에서만 숨긴다.
+  // 삭제 후 다시 넣는 방식은 id·순번이 바뀌어 원래대로 돌아가지 않는다.
+  // 대기 중에 탭을 닫으면 삭제가 취소되는데, 지워지지 않는 쪽으로 실패하므로 받아들인다.
+  // 성공한 삭제의 id 도 여기 남는다. revalidate 된 days 에 이미 없으므로 부작용이 없고,
+  // 바로 빼면 revalidate 반영 전에 장소가 잠깐 되살아나 보일 수 있다.
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  // 되돌리기와 에러는 따로 띄운다. 에러가 되돌리기를 덮으면 대기 중인 삭제를 취소할 수 없다.
+  const [undoOpen, setUndoOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const pendingRef = useRef<{
+    placeId: string;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+
+  const visibleDays = days.map((d) => ({
+    ...d,
+    places: d.places.filter((p) => !hiddenIds.includes(p.id)),
+  }));
+  const activeDay =
+    visibleDays.find((d) => d.id === activeDayId) ?? visibleDays[0];
+
+  // 화면을 떠나면(홈으로 이동 등) 대기 중인 삭제를 바로 보낸다.
+  // 이동 중이라 revalidate 는 하지 않는다 (deletePlace 주석 참고).
+  useEffect(() => {
+    const pending = pendingRef;
+    return () => {
+      if (!pending.current) return;
+      clearTimeout(pending.current.timer);
+      void deletePlace(pending.current.placeId, false);
+    };
+  }, []);
 
   function selectPlace(place: SelectedPlace | null) {
     selectedIdRef.current = place?.placeId ?? null;
@@ -66,6 +99,46 @@ export function TripEditor({
   function focusSearch() {
     setSheetExpanded(false);
     searchRef.current?.focus();
+  }
+
+  // 폼 action 이 아닌 곳에서 Server Action 을 부를 때는 startTransition 으로 감싼다
+  // (Next 문서 mutating-data). await 뒤의 업데이트는 transition 에 다시 넣어야 한다.
+  function commitDelete(placeId: string) {
+    startTransition(async () => {
+      const { error } = await deletePlace(placeId);
+      if (!error) return;
+      startTransition(() => {
+        setHiddenIds((ids) => ids.filter((id) => id !== placeId));
+        setErrorMessage(error);
+      });
+    });
+  }
+
+  function requestDelete(placeId: string) {
+    const prev = pendingRef.current;
+    if (prev) {
+      clearTimeout(prev.timer);
+      commitDelete(prev.placeId);
+    }
+
+    const timer = setTimeout(() => {
+      pendingRef.current = null;
+      setUndoOpen(false);
+      commitDelete(placeId);
+    }, UNDO_MS);
+
+    pendingRef.current = { placeId, timer };
+    setHiddenIds((ids) => [...ids, placeId]);
+    setUndoOpen(true);
+  }
+
+  function undoDelete() {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    pendingRef.current = null;
+    setHiddenIds((ids) => ids.filter((id) => id !== pending.placeId));
+    setUndoOpen(false);
   }
 
   return (
@@ -142,15 +215,65 @@ export function TripEditor({
 
         {activeDay ? (
           <ItineraryPanel
-            days={days}
+            days={visibleDays}
             activeDay={activeDay}
             onSelectDay={setActiveDayId}
             expanded={sheetExpanded}
             onToggleExpanded={() => setSheetExpanded((v) => !v)}
             onAddPlace={focusSearch}
+            onDeletePlace={requestDelete}
           />
         ) : null}
+
+        {errorMessage || undoOpen ? (
+          <div className="absolute inset-x-4 bottom-4 z-20 flex flex-col gap-2 lg:right-auto lg:left-5.5 lg:w-90">
+            {errorMessage ? (
+              <Toast
+                role="alert"
+                message={errorMessage}
+                actionLabel="닫기"
+                onAction={() => setErrorMessage(null)}
+              />
+            ) : null}
+            {undoOpen ? (
+              <Toast
+                role="status"
+                message="장소를 삭제했습니다"
+                actionLabel="되돌리기"
+                onAction={undoDelete}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
+    </div>
+  );
+}
+
+function Toast({
+  role,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  role: "status" | "alert";
+  message: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div
+      role={role}
+      className="flex items-center gap-3 rounded-[10px] bg-ink px-4 py-3.5 shadow-[0_4px_16px_rgb(31_31_29/0.22)]"
+    >
+      <p className="flex-1 text-[13.5px] text-surface">{message}</p>
+      <button
+        type="button"
+        onClick={onAction}
+        className="text-[13.5px] font-semibold text-surface underline decoration-white/50 underline-offset-2"
+      >
+        {actionLabel}
+      </button>
     </div>
   );
 }

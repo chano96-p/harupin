@@ -53,3 +53,33 @@ export async function addPlace(
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }
+
+export type DeletePlaceResult = { error?: string };
+
+/**
+ * revalidate: 화면을 떠나는 중(unmount)에 보내는 삭제는 false 로 부른다.
+ * 이동 중에 revalidate 응답이 오면 어느 화면에 반영될지 정의돼 있지 않다.
+ */
+export async function deletePlace(
+  placeId: string,
+  revalidate = true,
+): Promise<DeletePlaceResult> {
+  const supabase = await createClient();
+  // 남의 장소는 RLS(places_own)가 0행으로 걸러낸다. 이미 지워진 장소도 0행이라
+  // 같은 결과(삭제된 상태)이므로 에러로 보지 않는다.
+  // revalidate 경로는 클라이언트가 보낸 값이 아니라 실제로 지운 행에서 얻는다.
+  const { data, error } = await supabase
+    .from("places")
+    .delete()
+    .eq("id", placeId)
+    .select("trip_id");
+
+  if (error) {
+    console.error("장소 삭제 실패", { placeId, error });
+    return { error: "장소를 삭제하지 못했습니다." };
+  }
+
+  const tripId = data[0]?.trip_id;
+  if (revalidate && tripId) revalidatePath(`/trips/${tripId}`);
+  return {};
+}
