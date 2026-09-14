@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
 
   const url = new URL(`https://places.googleapis.com/v1/places/${placeId}`);
   url.searchParams.set("sessionToken", sessionToken);
+  // 자동완성과 같은 언어로 맞춘다. 빠지면 displayName 이 영어로 온다.
+  url.searchParams.set("languageCode", "ko");
+  url.searchParams.set("regionCode", "kr");
 
   const googleRes = await fetch(url, {
     headers: {

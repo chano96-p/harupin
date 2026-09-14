@@ -11,29 +11,33 @@ export type DayOption = { id: string; dayNumber: number; date: string };
 export function AddPlaceForm({
   tripId,
   days,
+  defaultDayId,
   place,
   onSaved,
+  onCancel,
 }: {
   tripId: string;
   days: DayOption[];
+  defaultDayId: string;
   place: SelectedPlace;
-  onSaved: () => void;
+  onSaved: (dayId: string, placeId: string) => void;
+  onCancel: () => void;
 }) {
   const [state, action, pending] = useActionState<AddPlaceState, FormData>(
     async (prev, formData) => {
       const result = await addPlace(prev, formData);
-      if (result.ok) onSaved();
+      if (result.ok) onSaved(String(formData.get("dayId")), place.placeId);
       return result;
     },
     {},
   );
   const [category, setCategory] = useState<string>(CATEGORIES[0].value);
-  const [dayId, setDayId] = useState<string>(days[0]?.id ?? "");
+  const [dayId, setDayId] = useState<string>(defaultDayId);
 
   return (
     <form
       action={action}
-      className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4"
+      className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4 shadow-overlay"
     >
       <input type="hidden" name="tripId" value={tripId} />
       <input type="hidden" name="name" value={place.name} />
@@ -71,18 +75,33 @@ export function AddPlaceForm({
         <label className="text-[12.5px] font-semibold text-ink" htmlFor="day">
           어느 날
         </label>
-        <select
-          id="day"
-          value={dayId}
-          onChange={(e) => setDayId(e.target.value)}
-          className="h-10.5 rounded-control border border-control-line bg-surface px-3 text-[14px] text-ink outline-none focus:border-ink"
-        >
-          {days.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.dayNumber}일차 · {d.date.replaceAll("-", ".")}
-            </option>
-          ))}
-        </select>
+        {/* 브라우저 기본 화살표는 위치를 조절할 수 없어 숨기고 직접 그린다. */}
+        <div className="relative">
+          <select
+            id="day"
+            value={dayId}
+            onChange={(e) => setDayId(e.target.value)}
+            className="h-10.5 w-full appearance-none rounded-control border border-control-line bg-surface pr-10 pl-3 text-[14px] text-ink outline-none focus:border-ink"
+          >
+            {days.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.dayNumber}일차 · {d.date.replaceAll("-", ".")}
+              </option>
+            ))}
+          </select>
+          <svg
+            aria-hidden
+            viewBox="0 0 16 16"
+            className="pointer-events-none absolute top-1/2 right-3.5 size-3.5 -translate-y-1/2 text-ink-soft"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m4 6 4 4 4-4" />
+          </svg>
+        </div>
       </div>
 
       {state.error ? (
@@ -91,13 +110,23 @@ export function AddPlaceForm({
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending || !dayId}
-        className="h-10.5 rounded-control bg-ink text-[13.5px] font-semibold text-surface disabled:opacity-60"
-      >
-        {pending ? "추가하는 중…" : "이 날에 추가"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={pending}
+          className="h-10.5 rounded-control border border-control-line px-4 text-[13.5px] font-semibold text-ink transition-colors hover:bg-surface-hover disabled:opacity-60"
+        >
+          취소
+        </button>
+        <button
+          type="submit"
+          disabled={pending || !dayId}
+          className="h-10.5 flex-1 rounded-control bg-ink text-[13.5px] font-semibold text-surface disabled:opacity-60"
+        >
+          {pending ? "추가하는 중…" : "이 날에 추가"}
+        </button>
+      </div>
     </form>
   );
 }

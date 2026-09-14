@@ -1,15 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { AppHeader } from "@/components/layout/AppHeader";
-import { TripMapSearch } from "@/components/trips/TripMapSearch";
-import { CATEGORIES, categoryLabel } from "@/lib/places/categories";
+import { TripEditor } from "@/components/itinerary/TripEditor";
 import { createClient } from "@/lib/supabase/server";
 
-/**
- * 일정 편집 화면(시안 1a·1b)의 자리.
- * 지금은 일차 목록 + 장소 검색(4번) + Day 에 추가(5번)까지다.
- * 정식 스플릿 레이아웃과 순번 핀(6번)·dnd(7번)는 다음 단계에 들어온다.
- */
 export default async function TripPage({
   params,
 }: {
@@ -25,7 +18,7 @@ export default async function TripPage({
   const { data: trip, error } = await supabase
     .from("trips")
     .select(
-      "id, title, start_date, end_date, days(id, day_number, date, places(id, name, category, visit_order))",
+      "id, title, start_date, end_date, region, days(id, day_number, date, places(id, name, category, lat, lng, visit_order))",
     )
     .eq("id", tripId)
     .maybeSingle();
@@ -43,6 +36,8 @@ export default async function TripPage({
     id: string;
     name: string;
     category: string;
+    lat: number;
+    lng: number;
     visit_order: number;
   };
   type DayRow = {
@@ -53,73 +48,32 @@ export default async function TripPage({
   };
 
   const days = (trip.days as DayRow[])
+    .sort((a, b) => a.day_number - b.day_number)
     .map((d) => ({
-      ...d,
-      places: [...d.places].sort((a, b) => a.visit_order - b.visit_order),
-    }))
-    .sort((a, b) => a.day_number - b.day_number);
-
-  const dayOptions = days.map((d) => ({
-    id: d.id,
-    dayNumber: d.day_number,
-    date: d.date,
-  }));
+      id: d.id,
+      dayNumber: d.day_number,
+      date: d.date,
+      places: [...d.places]
+        .sort((a, b) => a.visit_order - b.visit_order)
+        .map(({ id, name, category, lat, lng }) => ({
+          id,
+          name,
+          category,
+          lat,
+          lng,
+        })),
+    }));
 
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas">
-      <AppHeader />
-      <main className="flex flex-col gap-5 px-5 py-7 lg:px-6.5">
-        <div className="flex items-baseline gap-2.5">
-          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-ink">
-            {trip.title}
-          </h1>
-          <span className="text-[13px] text-ink-soft">{days.length}일차</span>
-        </div>
-
-        <TripMapSearch tripId={trip.id} days={dayOptions} />
-
-        <ul className="flex flex-col gap-3">
-          {days.map((d) => (
-            <li
-              key={d.id}
-              className="flex flex-col gap-2 rounded-card border border-line bg-surface px-4 py-3"
-            >
-              <div className="flex items-baseline gap-2.5">
-                <span className="text-[13px] font-semibold text-ink">
-                  {d.day_number}일차
-                </span>
-                <span className="text-[13px] text-ink-soft">
-                  {d.date.replaceAll("-", ".")}
-                </span>
-                <span className="text-[12px] text-ink-mute">
-                  {d.places.length}곳
-                </span>
-              </div>
-
-              {d.places.length > 0 ? (
-                <ol className="flex flex-col gap-1.5">
-                  {d.places.map((p) => {
-                    const cat = CATEGORIES.find((c) => c.value === p.category);
-                    return (
-                      <li key={p.id} className="flex items-center gap-2.5">
-                        <span
-                          className={`grid size-6.5 flex-none place-items-center rounded-pill text-[12px] font-semibold ${cat?.tint ?? "bg-lodging-tint"} ${cat?.deep ?? "text-ink"}`}
-                        >
-                          {p.visit_order}
-                        </span>
-                        <span className="text-[14px] text-ink">{p.name}</span>
-                        <span className="text-[12px] text-ink-mute">
-                          {categoryLabel(p.category)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </main>
-    </div>
+    <TripEditor
+      trip={{
+        id: trip.id,
+        title: trip.title,
+        startDate: trip.start_date,
+        endDate: trip.end_date,
+        region: trip.region,
+      }}
+      days={days}
+    />
   );
 }

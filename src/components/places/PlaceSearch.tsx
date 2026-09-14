@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 
 type Suggestion = { placeId: string; mainText: string; secondaryText: string };
 export type SelectedPlace = {
@@ -14,8 +14,10 @@ const DEBOUNCE_MS = 300;
 
 export function PlaceSearch({
   onSelect,
+  inputRef,
 }: {
   onSelect: (place: SelectedPlace) => void;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -119,15 +121,21 @@ export function PlaceSearch({
   );
 
   return (
-    <div className="relative w-full max-w-95">
+    <div className="relative w-full">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-4 size-3.25 -translate-y-1/2 rounded-pill border-2 border-ink-mute lg:left-4.5"
+      />
       <input
+        ref={inputRef}
         type="text"
         value={query}
         onChange={handleChange}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         onBlur={() => setOpen(false)}
-        placeholder="장소, 주소 검색"
-        className="h-11 w-full rounded-control border border-control-line bg-surface px-3.5 text-[14px] text-ink shadow-overlay outline-none placeholder:text-ink-mute focus:border-ink"
+        placeholder="장소 검색"
+        aria-label="장소 검색"
+        className="h-11 w-full rounded-pill border border-line bg-surface pr-4 pl-9.5 text-[13.5px] text-ink shadow-overlay outline-none placeholder:text-ink-mute focus:border-ink lg:h-12 lg:pl-10.5 lg:text-[14px]"
       />
 
       {open && (suggestions.length > 0 || loading || error) ? (
