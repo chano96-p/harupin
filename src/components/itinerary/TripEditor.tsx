@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  startTransition,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+} from "react";
 
 import { Wordmark } from "@/components/brand/Wordmark";
 import { ItineraryPanel } from "@/components/itinerary/ItineraryPanel";
@@ -11,7 +18,7 @@ import {
   type SelectedPlace,
 } from "@/components/places/PlaceSearch";
 import { AddPlaceForm } from "@/components/trips/AddPlaceForm";
-import { deletePlace } from "@/lib/actions/places";
+import { deletePlace, reorderPlaces } from "@/lib/actions/places";
 import { formatTripRange } from "@/lib/trips/format";
 
 export type EditorPlace = {
@@ -51,6 +58,7 @@ export function TripEditor({
   trip: EditorTrip;
   days: EditorDay[];
 }) {
+  const router = useRouter();
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [selected, setSelected] = useState<SelectedPlace | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
@@ -73,7 +81,23 @@ export function TripEditor({
     timer: ReturnType<typeof setTimeout>;
   } | null>(null);
 
-  const visibleDays = days.map((d) => ({
+  // 놓는 즉시 새 순서를 보여준다. 저장 transition 이 끝나면 서버 값(revalidate 된 days)으로
+  // 자연히 대체되고, 실패하면 원래 순서로 돌아간다.
+  // placeIds 는 숨긴 장소까지 포함한 Day 전체 목록이다(handleReorder).
+  // 그사이 새로 추가돼 목록에 없는 장소는 서버 reorder_places 와 똑같이 뒤에 붙인다.
+  const [optimisticDays, applyOrder] = useOptimistic(
+    days,
+    (state, next: { dayId: string; placeIds: string[] }) =>
+      state.map((d) => {
+        if (d.id !== next.dayId) return d;
+        const byId = new Map(d.places.map((p) => [p.id, p]));
+        const ordered = next.placeIds.flatMap((id) => byId.get(id) ?? []);
+        const rest = d.places.filter((p) => !next.placeIds.includes(p.id));
+        return { ...d, places: [...ordered, ...rest] };
+      }),
+  );
+
+  const visibleDays = optimisticDays.map((d) => ({
     ...d,
     places: d.places.filter((p) => !hiddenIds.includes(p.id)),
   }));
@@ -130,6 +154,27 @@ export function TripEditor({
     pendingRef.current = { placeId, timer };
     setHiddenIds((ids) => [...ids, placeId]);
     setUndoOpen(true);
+  }
+
+  function handleReorder(dayId: string, visibleIds: string[]) {
+    // 삭제 대기로 숨긴 장소는 제자리에 두고, 보이는 칸만 새 순서로 채운 전체 목록을 보낸다.
+    // 숨긴 장소를 빼고 보내면 맨 뒤로 밀려서, 되돌렸을 때 원래 자리로 돌아오지 않는다.
+    const queue = [...visibleIds];
+    const placeIds = (
+      optimisticDays.find((d) => d.id === dayId)?.places ?? []
+    ).map((p) => (hiddenIds.includes(p.id) ? p.id : (queue.shift() ?? p.id)));
+
+    startTransition(async () => {
+      applyOrder({ dayId, placeIds });
+      const { error } = await reorderPlaces(dayId, placeIds);
+      if (!error) return;
+      // 다른 탭에서 지운 장소가 목록에 남아 있으면 서버가 거부한다. 실패 시에는
+      // revalidate 가 일어나지 않아 새로고침 전까지 같은 실패가 반복되므로 최신 목록을 다시 받는다.
+      startTransition(() => {
+        setErrorMessage(error);
+        router.refresh();
+      });
+    });
   }
 
   function undoDelete() {
@@ -222,6 +267,9 @@ export function TripEditor({
             onToggleExpanded={() => setSheetExpanded((v) => !v)}
             onAddPlace={focusSearch}
             onDeletePlace={requestDelete}
+            onReorderPlaces={(placeIds) =>
+              handleReorder(activeDay.id, placeIds)
+            }
           />
         ) : null}
 

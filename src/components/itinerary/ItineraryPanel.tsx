@@ -1,10 +1,37 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+  type UniqueIdentifier,
+} from "@dnd-kit/core";
+import {
+  restrictToParentElement,
+  restrictToVerticalAxis,
+} from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import type { EditorDay, EditorPlace } from "@/components/itinerary/TripEditor";
 import { CATEGORIES, categoryLabel } from "@/lib/places/categories";
 import { formatDayDate } from "@/lib/trips/format";
+
+const SCREEN_READER_INSTRUCTIONS = {
+  draggable:
+    "스페이스나 엔터로 잡고, 위아래 방향키로 옮긴 뒤 다시 스페이스나 엔터로 놓습니다. Esc 로 취소합니다.",
+};
 
 /**
  * Day 탭 + 그 Day 의 장소 리스트.
@@ -18,6 +45,7 @@ export function ItineraryPanel({
   onToggleExpanded,
   onAddPlace,
   onDeletePlace,
+  onReorderPlaces,
 }: {
   days: EditorDay[];
   activeDay: EditorDay;
@@ -26,9 +54,54 @@ export function ItineraryPanel({
   onToggleExpanded: () => void;
   onAddPlace: () => void;
   onDeletePlace: (placeId: string) => void;
+  onReorderPlaces: (placeIds: string[]) => void;
 }) {
   // 스와이프로 삭제 버튼이 열린 카드. 한 번에 하나만 연다.
   const [swipedId, setSwipedId] = useState<string | null>(null);
+
+  // SSR 과 클라이언트의 aria-describedby id 가 어긋나지 않게 고정한다.
+  const dndId = useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const placeIds = activeDay.places.map((p) => p.id);
+
+  function nameOf(id: UniqueIdentifier) {
+    return activeDay.places.find((p) => p.id === id)?.name ?? "장소";
+  }
+  function positionOf(id: UniqueIdentifier) {
+    return placeIds.indexOf(String(id)) + 1;
+  }
+
+  const announcements: Announcements = {
+    onDragStart: ({ active }) =>
+      `${nameOf(active.id)}을(를) 잡았습니다. 현재 ${positionOf(active.id)}번째입니다.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `${nameOf(active.id)}이(가) ${positionOf(over.id)}번째 위치로 이동했습니다.`
+        : undefined,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `${nameOf(active.id)}을(를) ${positionOf(over.id)}번째에 놓았습니다.`
+        : undefined,
+    onDragCancel: ({ active }) =>
+      `이동을 취소했습니다. ${nameOf(active.id)}은(는) 원래 위치에 있습니다.`,
+  };
+
+  function handleDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return;
+    onReorderPlaces(
+      arrayMove(
+        placeIds,
+        placeIds.indexOf(String(active.id)),
+        placeIds.indexOf(String(over.id)),
+      ),
+    );
+  }
 
   return (
     <section
@@ -81,21 +154,38 @@ export function ItineraryPanel({
           <EmptyDay onSearch={onAddPlace} />
         ) : (
           <>
-            <ol className="flex flex-col gap-2.25 lg:gap-2.5">
-              {activeDay.places.map((p, i) => (
-                <PlaceCard
-                  key={p.id}
-                  place={p}
-                  order={i + 1}
-                  swiped={swipedId === p.id}
-                  onSwipedChange={(open) => setSwipedId(open ? p.id : null)}
-                  onDelete={() => {
-                    setSwipedId(null);
-                    onDeletePlace(p.id);
-                  }}
-                />
-              ))}
-            </ol>
+            <DndContext
+              id={dndId}
+              sensors={sensors}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+              accessibility={{
+                announcements,
+                screenReaderInstructions: SCREEN_READER_INSTRUCTIONS,
+              }}
+              onDragStart={() => setSwipedId(null)}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={placeIds}
+                strategy={verticalListSortingStrategy}
+              >
+                <ol className="flex flex-col gap-2.25 lg:gap-2.5">
+                  {activeDay.places.map((p, i) => (
+                    <PlaceCard
+                      key={p.id}
+                      place={p}
+                      order={i + 1}
+                      swiped={swipedId === p.id}
+                      onSwipedChange={(open) => setSwipedId(open ? p.id : null)}
+                      onDelete={() => {
+                        setSwipedId(null);
+                        onDeletePlace(p.id);
+                      }}
+                    />
+                  ))}
+                </ol>
+              </SortableContext>
+            </DndContext>
 
             <button
               type="button"
@@ -117,6 +207,8 @@ const DESKTOP_QUERY = "(min-width: 64rem)";
 
 /**
  * 삭제: 데스크톱은 카드의 × 버튼(1a), 모바일은 왼쪽으로 밀어 여는 삭제 버튼(3j).
+ * 순서 변경: 오른쪽 끝 핸들(점 6개)을 잡고 끈다. 카드 전체가 아니라 핸들만 끌리게 해서
+ * 모바일의 세로 스크롤·스와이프 삭제와 겹치지 않는다.
  */
 function PlaceCard({
   place,
@@ -131,6 +223,19 @@ function PlaceCard({
   onSwipedChange: (open: boolean) => void;
   onDelete: () => void;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: place.id,
+    attributes: { roleDescription: "순서 변경 가능한 장소" },
+  });
+
   const [dragX, setDragX] = useState<number | null>(null);
   // 가로/세로 판정 전에는 axis 가 null 이다. 세로로 판정되면 스크롤에 양보한다.
   // 손을 뗄 때는 state 가 아니라 여기 기록한 마지막 위치로 판정한다.
@@ -185,7 +290,11 @@ function PlaceCard({
   }
 
   return (
-    <li className="relative overflow-hidden rounded-card">
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={`relative overflow-hidden rounded-card ${isDragging ? "z-10 shadow-[0_4px_16px_rgb(31_31_29/0.12)]" : ""}`}
+    >
       {/* 스와이프 제스처 전용 버튼. 키보드·스크린리더는 카드 안의 삭제 버튼을 쓴다. */}
       <button
         type="button"
@@ -241,6 +350,24 @@ function PlaceCard({
           className="grid size-5.5 flex-none place-items-center rounded-pill text-[15px] text-ink-mute transition-colors hover:bg-surface-hover hover:text-food max-lg:not-focus-visible:sr-only"
         >
           <span aria-hidden>×</span>
+        </button>
+        {/* touch-none: 핸들 위에서는 브라우저 스크롤 대신 드래그가 포인터를 받는다.
+            카드의 스와이프 판정이 같은 포인터를 잡지 않도록 전파를 끊는다. */}
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          onPointerDown={(e) => {
+            listeners?.onPointerDown?.(e);
+            e.stopPropagation();
+          }}
+          aria-label={`${place.name} 순서 변경`}
+          className="-m-2 grid flex-none cursor-grab touch-none grid-cols-[repeat(2,3px)] gap-1 p-2 active:cursor-grabbing lg:mt-0.5"
+        >
+          {Array.from({ length: 6 }, (_, i) => (
+            <span key={i} className="size-0.75 rounded-pill bg-line-strong" />
+          ))}
         </button>
       </div>
     </li>

@@ -83,3 +83,38 @@ export async function deletePlace(
   if (revalidate && tripId) revalidatePath(`/trips/${tripId}`);
   return {};
 }
+
+// 페이지 조회가 PostgREST max_rows(1000)에서 잘리므로 화면이 이보다 많이 보낼 일은 없다.
+const MAX_REORDER_IDS = 1000;
+
+export type ReorderPlacesResult = { error?: string };
+
+export async function reorderPlaces(
+  dayId: string,
+  placeIds: string[],
+): Promise<ReorderPlacesResult> {
+  // Server Action 은 공개 엔드포인트라 인자 형태를 다시 본다.
+  // 목록이 그 Day 의 장소와 맞는지는 reorder_places 가 검사한다.
+  if (
+    typeof dayId !== "string" ||
+    !Array.isArray(placeIds) ||
+    placeIds.length > MAX_REORDER_IDS ||
+    !placeIds.every((id) => typeof id === "string")
+  ) {
+    return { error: "순서를 저장하지 못했습니다." };
+  }
+
+  const supabase = await createClient();
+  const { data: tripId, error } = await supabase.rpc("reorder_places", {
+    p_day_id: dayId,
+    p_place_ids: placeIds,
+  });
+
+  if (error) {
+    console.error("reorder_places 실패", { dayId, error });
+    return { error: "순서를 저장하지 못했습니다." };
+  }
+
+  if (tripId) revalidatePath(`/trips/${tripId}`);
+  return {};
+}
