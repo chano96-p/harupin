@@ -22,3 +22,4 @@ export const MAX_INPUT_LENGTH = 200;
 /** DB 의 places_* / trips_* length CHECK 와 같은 값이어야 한다. */
 export const MAX_PLACE_NAME = 200;
 export const MAX_GOOGLE_PLACE_ID = 512;
+export const MAX_PLACE_MEMO = 2000;

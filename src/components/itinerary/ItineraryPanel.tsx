@@ -1,6 +1,13 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -25,7 +32,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import type { EditorDay, EditorPlace } from "@/components/itinerary/TripEditor";
+import { updatePlaceMemo, type UpdateMemoState } from "@/lib/actions/places";
 import { CATEGORIES, categoryLabel } from "@/lib/places/categories";
+import { MAX_PLACE_MEMO } from "@/lib/places/limits";
 import { formatDayDate } from "@/lib/trips/format";
 
 const SCREEN_READER_INSTRUCTIONS = {
@@ -41,6 +50,8 @@ export function ItineraryPanel({
   days,
   activeDay,
   onSelectDay,
+  focusedId,
+  onFocusPlace,
   expanded,
   onToggleExpanded,
   onAddPlace,
@@ -50,6 +61,8 @@ export function ItineraryPanel({
   days: EditorDay[];
   activeDay: EditorDay;
   onSelectDay: (dayId: string) => void;
+  focusedId: string | null;
+  onFocusPlace: (placeId: string | null) => void;
   expanded: boolean;
   onToggleExpanded: () => void;
   onAddPlace: () => void;
@@ -175,6 +188,10 @@ export function ItineraryPanel({
                       key={p.id}
                       place={p}
                       order={i + 1}
+                      expanded={focusedId === p.id}
+                      onToggleExpanded={() =>
+                        onFocusPlace(focusedId === p.id ? null : p.id)
+                      }
                       swiped={swipedId === p.id}
                       onSwipedChange={(open) => setSwipedId(open ? p.id : null)}
                       onDelete={() => {
@@ -206,19 +223,25 @@ const SWIPE_SLOP = 6;
 const DESKTOP_QUERY = "(min-width: 64rem)";
 
 /**
+ * 누르면 제자리에서 펼쳐져 상세를 보여준다(데스크톱 3d, 모바일 3h).
  * 삭제: 데스크톱은 카드의 × 버튼(1a), 모바일은 왼쪽으로 밀어 여는 삭제 버튼(3j).
  * 순서 변경: 오른쪽 끝 핸들(점 6개)을 잡고 끈다. 카드 전체가 아니라 핸들만 끌리게 해서
  * 모바일의 세로 스크롤·스와이프 삭제와 겹치지 않는다.
+ * 펼친 동안에는 핸들과 스와이프를 끈다. 상세 안에 삭제 버튼이 따로 있다.
  */
 function PlaceCard({
   place,
   order,
+  expanded,
+  onToggleExpanded,
   swiped,
   onSwipedChange,
   onDelete,
 }: {
   place: EditorPlace;
   order: number;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   swiped: boolean;
   onSwipedChange: (open: boolean) => void;
   onDelete: () => void;
@@ -236,6 +259,9 @@ function PlaceCard({
     attributes: { roleDescription: "순서 변경 가능한 장소" },
   });
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  // 펼치기 버튼은 펼치든 접든 남아 있는 요소라, "상세 닫기" 뒤 포커스를 돌려줄 곳으로 쓴다.
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const [dragX, setDragX] = useState<number | null>(null);
   // 가로/세로 판정 전에는 axis 가 null 이다. 세로로 판정되면 스크롤에 양보한다.
   // 손을 뗄 때는 state 가 아니라 여기 기록한 마지막 위치로 판정한다.
@@ -248,13 +274,34 @@ function PlaceCard({
     lastX: number;
   } | null>(null);
 
+  // 펼친 카드가 목록(특히 모바일의 낮은 시트) 밖으로 잘리지 않게 보이는 곳으로 당긴다.
+  useEffect(() => {
+    if (expanded) {
+      cardRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [expanded]);
+
   const cat = CATEGORIES.find((c) => c.value === place.category);
   const tint = cat?.tint ?? "bg-lodging-tint";
   const deep = cat?.deep ?? "text-lodging-deep";
+  const dot = cat?.dot ?? "bg-lodging";
   const offset = dragX ?? (swiped ? -SWIPE_REVEAL : 0);
 
+  function handleToggle() {
+    // 스와이프로 열린 상태에서 누르면 펼치기 대신 삭제 버튼을 닫는다.
+    if (swiped) {
+      onSwipedChange(false);
+      return;
+    }
+    onToggleExpanded();
+  }
+
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (e.pointerType === "mouse" || window.matchMedia(DESKTOP_QUERY).matches)
+    if (
+      expanded ||
+      e.pointerType === "mouse" ||
+      window.matchMedia(DESKTOP_QUERY).matches
+    )
       return;
     gestureRef.current = {
       x: e.clientX,
@@ -314,63 +361,265 @@ function PlaceCard({
       {/* 밀어낼 때 카드를 translate 하지 않고 폭을 줄인다(시안 3j).
           translate 하면 왼쪽 보더와 모서리가 li 의 overflow 에 잘린다. */}
       <div
+        ref={cardRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         onClick={() => swiped && onSwipedChange(false)}
         style={{ width: `calc(100% + ${offset}px)` }}
-        className={`relative flex touch-pan-y items-center gap-2.75 rounded-card border border-line bg-surface p-3.25 lg:items-start lg:gap-3 lg:p-3.5 ${dragX === null ? "transition-[width] duration-200" : ""}`}
+        className={`relative flex touch-pan-y flex-col rounded-card border bg-surface ${expanded ? "gap-3.5 border-ink p-3.5 lg:p-3.75" : "border-line p-3.25 lg:p-3.5"} ${dragX === null ? "transition-[width] duration-200" : ""}`}
       >
-        <span
-          className={`grid size-6.5 flex-none place-items-center rounded-pill text-[13px] font-semibold ${tint} ${deep}`}
+        <div
+          className={`flex gap-2.75 lg:gap-3 ${expanded ? "items-start" : "items-center lg:items-start"}`}
         >
-          {order}
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-1 lg:gap-1.5">
-          <span className="truncate text-[14.5px] font-semibold tracking-[-0.01em] text-ink lg:text-[15px]">
-            {place.name}
-          </span>
-          <span className="text-[12px] text-ink-soft lg:hidden">
-            {categoryLabel(place.category)}
-          </span>
-          <span
-            className={`hidden self-start rounded-pill px-2 py-0.75 text-[11px] font-semibold lg:inline ${tint} ${deep}`}
+          <button
+            ref={toggleRef}
+            type="button"
+            onClick={handleToggle}
+            aria-expanded={expanded}
+            className={`flex min-w-0 flex-1 gap-2.75 text-left lg:gap-3 ${expanded ? "items-start" : "items-center lg:items-start"}`}
           >
-            {categoryLabel(place.category)}
-          </span>
+            <span
+              className={`grid flex-none place-items-center rounded-pill font-semibold ${
+                expanded
+                  ? `size-7 text-[13.5px] text-white ${dot}`
+                  : `size-6.5 text-[13px] ${tint} ${deep}`
+              }`}
+            >
+              {order}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1 lg:gap-1.5">
+              <span
+                className={`font-semibold tracking-[-0.01em] text-ink ${expanded ? "text-[16px] wrap-break-word" : "truncate text-[14.5px] lg:text-[15px]"}`}
+              >
+                {place.name}
+              </span>
+              {expanded ? null : (
+                <span className="text-[12px] text-ink-soft lg:hidden">
+                  {categoryLabel(place.category)}
+                </span>
+              )}
+              <span
+                className={`self-start rounded-pill px-2 py-0.75 text-[11px] font-semibold ${tint} ${deep} ${expanded ? "inline" : "hidden lg:inline"}`}
+              >
+                {categoryLabel(place.category)}
+              </span>
+            </span>
+          </button>
+
+          {expanded ? (
+            <button
+              type="button"
+              onClick={() => {
+                onToggleExpanded();
+                toggleRef.current?.focus();
+              }}
+              aria-label={`${place.name} 상세 닫기`}
+              className="grid size-7.5 flex-none place-items-center rounded-pill text-ink-mute transition-colors hover:bg-surface-hover lg:flex lg:size-auto lg:gap-1 lg:px-2 lg:py-1 lg:text-[12px]"
+            >
+              <span aria-hidden className="hidden lg:inline">
+                닫기
+              </span>
+              <svg
+                aria-hidden
+                viewBox="0 0 16 16"
+                className="size-3.5 lg:size-3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m4 10 4-4 4 4" />
+              </svg>
+            </button>
+          ) : (
+            <>
+              {/* 모바일에서는 보이지 않지만 키보드·스크린리더로 닿는다. 키보드 포커스 시에만 드러난다.
+                  sr-only + lg:not-sr-only 로 풀면 not-sr-only 의 width/height:auto 가 size-5.5 뒤에
+                  생성돼 크기를 덮어쓴다. 숨길 조건 쪽을 좁혀서 되돌릴 일을 없앤다. */}
+              <button
+                type="button"
+                onClick={onDelete}
+                aria-label={`${place.name} 삭제`}
+                className="grid size-5.5 flex-none place-items-center rounded-pill text-[15px] text-ink-mute transition-colors hover:bg-surface-hover hover:text-food max-lg:not-focus-visible:sr-only"
+              >
+                <span aria-hidden>×</span>
+              </button>
+              {/* touch-none: 핸들 위에서는 브라우저 스크롤 대신 드래그가 포인터를 받는다.
+                  카드의 스와이프 판정이 같은 포인터를 잡지 않도록 전파를 끊는다. */}
+              <button
+                type="button"
+                ref={setActivatorNodeRef}
+                {...attributes}
+                {...listeners}
+                onPointerDown={(e) => {
+                  listeners?.onPointerDown?.(e);
+                  e.stopPropagation();
+                }}
+                aria-label={`${place.name} 순서 변경`}
+                className="-m-2 grid flex-none cursor-grab touch-none grid-cols-[repeat(2,3px)] gap-1 p-2 active:cursor-grabbing lg:-mt-0.5"
+              >
+                {Array.from({ length: 6 }, (_, i) => (
+                  <span
+                    key={i}
+                    className="size-0.75 rounded-pill bg-line-strong"
+                  />
+                ))}
+              </button>
+            </>
+          )}
         </div>
-        {/* 모바일에서는 보이지 않지만 키보드·스크린리더로 닿는다. 키보드 포커스 시에만 드러난다.
-            sr-only + lg:not-sr-only 로 풀면 not-sr-only 의 width/height:auto 가 size-5.5 뒤에
-            생성돼 크기를 덮어쓴다. 숨길 조건 쪽을 좁혀서 되돌릴 일을 없앤다. */}
+
+        {expanded ? <PlaceDetail place={place} onDelete={onDelete} /> : null}
+      </div>
+    </li>
+  );
+}
+
+/**
+ * 펼친 카드의 본문. 지금은 메모만 있다.
+ * 주소·영업시간(시안 3d)은 Place Details 상위 등급 호출 + place_cache 가 필요해 2단계 캐시 작업과 함께 넣는다.
+ */
+function PlaceDetail({
+  place,
+  onDelete,
+}: {
+  place: EditorPlace;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  // 편집창을 닫으면(저장·취소) 그 안의 버튼이 사라져 포커스가 body 로 빠진다.
+  // 다시 나타나는 "메모 수정" 버튼으로 돌려준다.
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef(false);
+
+  useEffect(() => {
+    if (editing || !returnFocusRef.current) return;
+    returnFocusRef.current = false;
+    editButtonRef.current?.focus();
+  }, [editing]);
+
+  function closeEditor() {
+    returnFocusRef.current = true;
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <MemoForm
+        placeId={place.id}
+        initialMemo={place.memo ?? ""}
+        onClose={closeEditor}
+      />
+    );
+  }
+
+  return (
+    <>
+      <dl className="flex gap-2.5">
+        <dt className="w-14.5 flex-none text-[12.5px] leading-normal text-ink-mute">
+          메모
+        </dt>
+        <dd
+          className={`min-w-0 flex-1 text-[13px] leading-normal wrap-break-word whitespace-pre-wrap ${place.memo ? "text-ink" : "text-ink-mute"}`}
+        >
+          {place.memo ?? "메모 없음"}
+        </dd>
+      </dl>
+      <div className="flex items-center gap-2 lg:gap-2.25">
+        <button
+          ref={editButtonRef}
+          type="button"
+          onClick={() => setEditing(true)}
+          className="h-11 flex-1 rounded-control border border-line text-[13px] font-semibold text-ink transition-colors hover:bg-surface-hover lg:h-auto lg:flex-none lg:px-3 lg:py-2 lg:text-[12.5px]"
+        >
+          {place.memo ? "메모 수정" : "메모 추가"}
+        </button>
+        <span aria-hidden className="hidden flex-1 lg:block" />
         <button
           type="button"
           onClick={onDelete}
-          aria-label={`${place.name} 삭제`}
-          className="grid size-5.5 flex-none place-items-center rounded-pill text-[15px] text-ink-mute transition-colors hover:bg-surface-hover hover:text-food max-lg:not-focus-visible:sr-only"
+          className="h-11 rounded-control px-3 text-[13px] font-semibold text-food-deep transition-colors hover:bg-food-tint lg:h-auto lg:py-2 lg:text-[12.5px]"
         >
-          <span aria-hidden>×</span>
-        </button>
-        {/* touch-none: 핸들 위에서는 브라우저 스크롤 대신 드래그가 포인터를 받는다.
-            카드의 스와이프 판정이 같은 포인터를 잡지 않도록 전파를 끊는다. */}
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          onPointerDown={(e) => {
-            listeners?.onPointerDown?.(e);
-            e.stopPropagation();
-          }}
-          aria-label={`${place.name} 순서 변경`}
-          className="-m-2 grid flex-none cursor-grab touch-none grid-cols-[repeat(2,3px)] gap-1 p-2 active:cursor-grabbing lg:mt-0.5"
-        >
-          {Array.from({ length: 6 }, (_, i) => (
-            <span key={i} className="size-0.75 rounded-pill bg-line-strong" />
-          ))}
+          삭제
         </button>
       </div>
-    </li>
+    </>
+  );
+}
+
+/**
+ * 편집할 때만 마운트한다. 다시 열면 지난 실패의 에러와 입력이 남지 않는다.
+ *
+ * textarea 는 controlled 로 둔다. form action 은 성공·실패와 관계없이 transition 이 끝날 때
+ * 폼을 리셋하므로(react-dom startHostTransition → requestFormReset), defaultValue 로 두면
+ * 저장이 실패했을 때 입력한 내용이 옛 메모로 되돌아간다.
+ */
+function MemoForm({
+  placeId,
+  initialMemo,
+  onClose,
+}: {
+  placeId: string;
+  initialMemo: string;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(initialMemo);
+  const [state, formAction, pending] = useActionState<
+    UpdateMemoState,
+    FormData
+  >(async (_prev, formData) => {
+    const result = await updatePlaceMemo(
+      placeId,
+      String(formData.get("memo") ?? ""),
+    );
+    // await 뒤의 업데이트를 transition 에 넣어야 revalidate 된 새 메모와 함께 반영된다.
+    // 밖에서 닫으면 편집창이 먼저 닫히고 옛 메모가 잠깐 보인다.
+    if (!result.error) startTransition(onClose);
+    return result;
+  }, {});
+  const memoId = useId();
+
+  return (
+    <form action={formAction} className="flex flex-col gap-2">
+      <label htmlFor={memoId} className="text-[12.5px] text-ink-mute">
+        메모
+      </label>
+      <textarea
+        id={memoId}
+        name="memo"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        maxLength={MAX_PLACE_MEMO}
+        rows={3}
+        autoFocus
+        className="resize-none rounded-control border border-control-line bg-surface px-3 py-2.5 text-[13.5px] leading-relaxed text-ink outline-none focus:border-ink"
+      />
+      {state.error ? (
+        <p role="alert" className="text-[12.5px] text-food-deep">
+          {state.error}
+        </p>
+      ) : null}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={pending}
+          className="h-11 rounded-control border border-control-line px-4 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-hover disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
+        >
+          취소
+        </button>
+        <button
+          type="submit"
+          disabled={pending}
+          className="h-11 flex-1 rounded-control bg-ink text-[13px] font-semibold text-surface disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
+        >
+          {pending ? "저장하는 중…" : "저장"}
+        </button>
+      </div>
+    </form>
   );
 }
 

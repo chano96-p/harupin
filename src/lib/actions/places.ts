@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { isCategory } from "@/lib/places/categories";
-import { MAX_GOOGLE_PLACE_ID, MAX_PLACE_NAME } from "@/lib/places/limits";
+import {
+  MAX_GOOGLE_PLACE_ID,
+  MAX_PLACE_MEMO,
+  MAX_PLACE_NAME,
+} from "@/lib/places/limits";
 import { createClient } from "@/lib/supabase/server";
 
 export type AddPlaceState = { error?: string; ok?: boolean };
@@ -81,6 +85,41 @@ export async function deletePlace(
 
   const tripId = data[0]?.trip_id;
   if (revalidate && tripId) revalidatePath(`/trips/${tripId}`);
+  return {};
+}
+
+export type UpdateMemoState = { error?: string };
+
+export async function updatePlaceMemo(
+  placeId: string,
+  memo: string,
+): Promise<UpdateMemoState> {
+  if (typeof placeId !== "string" || typeof memo !== "string") {
+    return { error: "메모를 저장하지 못했습니다." };
+  }
+  const trimmed = memo.trim();
+  // JS length 는 UTF-16 단위라 DB 의 char_length(코드포인트)보다 엄격하다. 통과하면 DB 도 통과한다.
+  if (trimmed.length > MAX_PLACE_MEMO) {
+    return { error: `메모는 ${MAX_PLACE_MEMO}자까지 쓸 수 있습니다.` };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("places")
+    .update({ memo: trimmed || null })
+    .eq("id", placeId)
+    .select("trip_id");
+
+  if (error) {
+    console.error("메모 저장 실패", { placeId, error });
+    return { error: "메모를 저장하지 못했습니다." };
+  }
+
+  // 0행 = 그사이 다른 곳에서 지워졌거나(RLS 로) 남의 장소다.
+  const tripId = data[0]?.trip_id;
+  if (!tripId) return { error: "장소를 찾을 수 없습니다." };
+
+  revalidatePath(`/trips/${tripId}`);
   return {};
 }
 

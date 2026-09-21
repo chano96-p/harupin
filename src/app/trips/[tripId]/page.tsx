@@ -18,7 +18,7 @@ export default async function TripPage({
   const { data: trip, error } = await supabase
     .from("trips")
     .select(
-      "id, title, start_date, end_date, region, days(id, day_number, date, places(id, name, category, lat, lng, visit_order))",
+      "id, title, start_date, end_date, region, days(id, day_number, date, places(id, name, category, lat, lng, memo, visit_order))",
     )
     .eq("id", tripId)
     .maybeSingle();
@@ -38,6 +38,7 @@ export default async function TripPage({
     category: string;
     lat: number;
     lng: number;
+    memo: string | null;
     visit_order: number;
   };
   type DayRow = {
@@ -55,12 +56,13 @@ export default async function TripPage({
       date: d.date,
       places: [...d.places]
         .sort((a, b) => a.visit_order - b.visit_order)
-        .map(({ id, name, category, lat, lng }) => ({
+        .map(({ id, name, category, lat, lng, memo }) => ({
           id,
           name,
           category,
           lat,
           lng,
+          memo,
         })),
     }));
 

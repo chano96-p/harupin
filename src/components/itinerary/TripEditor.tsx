@@ -27,6 +27,7 @@ export type EditorPlace = {
   category: string;
   lat: number;
   lng: number;
+  memo: string | null;
 };
 export type EditorDay = {
   id: string;
@@ -62,6 +63,9 @@ export function TripEditor({
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [selected, setSelected] = useState<SelectedPlace | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  // 상세를 펼친 장소. 목록에 없으면(다른 Day, 삭제 대기) focusedId 가 null 이 된다.
+  // 되돌리기로 다시 나타나면 펼친 상태로 돌아온다.
+  const [focusedPlaceId, setFocusedPlaceId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   // 저장은 폼이 사라진 뒤(다른 장소 선택)에도 끝까지 진행된다.
   // 늦게 끝난 저장이 그사이 고른 장소와 보던 탭을 덮지 않도록, 완료 시점의 선택과 비교한다.
@@ -103,6 +107,8 @@ export function TripEditor({
   }));
   const activeDay =
     visibleDays.find((d) => d.id === activeDayId) ?? visibleDays[0];
+  const focusedId =
+    activeDay?.places.find((p) => p.id === focusedPlaceId)?.id ?? null;
 
   // 화면을 떠나면(홈으로 이동 등) 대기 중인 삭제를 바로 보낸다.
   // 이동 중이라 revalidate 는 하지 않는다 (deletePlace 주석 참고).
@@ -207,7 +213,11 @@ export function TripEditor({
 
       <div className="relative min-h-0 flex-1 lg:flex">
         <div className="absolute inset-0 lg:relative lg:inset-auto lg:order-2 lg:flex-1">
-          <MapPanel pins={activeDay?.places ?? []} selected={selected} />
+          <MapPanel
+            pins={activeDay?.places ?? []}
+            selected={selected}
+            focusedId={focusedId}
+          />
 
           {/* 오버레이 줄 전체가 지도 드래그를 막지 않게 컨테이너는 이벤트를 통과시킨다.
               z-10: 모바일에서 검색 목록·추가 폼이 바텀시트에 가리지 않게 한다. */}
@@ -262,7 +272,12 @@ export function TripEditor({
           <ItineraryPanel
             days={visibleDays}
             activeDay={activeDay}
-            onSelectDay={setActiveDayId}
+            onSelectDay={(dayId) => {
+              setActiveDayId(dayId);
+              setFocusedPlaceId(null);
+            }}
+            focusedId={focusedId}
+            onFocusPlace={setFocusedPlaceId}
             expanded={sheetExpanded}
             onToggleExpanded={() => setSheetExpanded((v) => !v)}
             onAddPlace={focusSearch}
