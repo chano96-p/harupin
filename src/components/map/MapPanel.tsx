@@ -50,7 +50,13 @@ const DESATURATED_STYLES = [
 ];
 
 export type LatLng = { lat: number; lng: number };
-export type MapPin = LatLng & { id: string; name: string; category: string };
+export type MapPin = LatLng & {
+  id: string;
+  name: string;
+  category: string;
+  /** 방문 순번. 필터로 일부 핀이 빠져도 번호는 그대로다. */
+  order: number;
+};
 
 export function MapPanel({
   pins,
@@ -75,13 +81,13 @@ export function MapPanel({
         disableDefaultUI
         zoomControl
       >
-        {pins.map((pin, i) => (
+        {pins.map((pin) => (
           <HtmlMarker key={pin.id} lat={pin.lat} lng={pin.lng}>
             <NumberedPin
-              order={i + 1}
+              order={pin.order}
               name={pin.name}
               category={pin.category}
-              emphasized={i === 0}
+              emphasized={pin.order === 1}
               focused={pin.id === focusedPin?.id}
               dimmed={focusedPin !== null && pin.id !== focusedPin.id}
             />

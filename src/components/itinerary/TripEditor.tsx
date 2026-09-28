@@ -29,6 +29,8 @@ export type EditorPlace = {
   lng: number;
   memo: string | null;
 };
+/** 화면에 그리는 장소. order 는 삭제 대기를 뺀 방문 순번이고, 카테고리 필터와 무관하다. */
+export type ShownPlace = EditorPlace & { order: number };
 export type EditorDay = {
   id: string;
   dayNumber: number;
@@ -66,6 +68,8 @@ export function TripEditor({
   // 상세를 펼친 장소. 목록에 없으면(다른 Day, 삭제 대기) focusedId 가 null 이 된다.
   // 되돌리기로 다시 나타나면 펼친 상태로 돌아온다.
   const [focusedPlaceId, setFocusedPlaceId] = useState<string | null>(null);
+  // 꺼둔 카테고리(시안 1a 필터 칩). Day 를 바꿔도 유지한다.
+  const [offCategories, setOffCategories] = useState<string[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
   // 저장은 폼이 사라진 뒤(다른 장소 선택)에도 끝까지 진행된다.
   // 늦게 끝난 저장이 그사이 고른 장소와 보던 탭을 덮지 않도록, 완료 시점의 선택과 비교한다.
@@ -103,12 +107,26 @@ export function TripEditor({
 
   const visibleDays = optimisticDays.map((d) => ({
     ...d,
-    places: d.places.filter((p) => !hiddenIds.includes(p.id)),
+    places: d.places
+      .filter((p) => !hiddenIds.includes(p.id))
+      .map((p, i): ShownPlace => ({ ...p, order: i + 1 })),
   }));
   const activeDay =
     visibleDays.find((d) => d.id === activeDayId) ?? visibleDays[0];
+  // 필터는 보여주기만 거른다. 순번은 위에서 매긴 값을 그대로 써서
+  // "3번째 방문지" 가 필터를 켜도 3번으로 남는다.
+  const shownPlaces =
+    activeDay?.places.filter((p) => !offCategories.includes(p.category)) ?? [];
   const focusedId =
-    activeDay?.places.find((p) => p.id === focusedPlaceId)?.id ?? null;
+    shownPlaces.find((p) => p.id === focusedPlaceId)?.id ?? null;
+
+  function toggleCategory(category: string) {
+    setOffCategories((off) =>
+      off.includes(category)
+        ? off.filter((c) => c !== category)
+        : [...off, category],
+    );
+  }
 
   // 화면을 떠나면(홈으로 이동 등) 대기 중인 삭제를 바로 보낸다.
   // 이동 중이라 revalidate 는 하지 않는다 (deletePlace 주석 참고).
@@ -163,12 +181,17 @@ export function TripEditor({
   }
 
   function handleReorder(dayId: string, visibleIds: string[]) {
-    // 삭제 대기로 숨긴 장소는 제자리에 두고, 보이는 칸만 새 순서로 채운 전체 목록을 보낸다.
-    // 숨긴 장소를 빼고 보내면 맨 뒤로 밀려서, 되돌렸을 때 원래 자리로 돌아오지 않는다.
+    // 화면에 없는 장소(삭제 대기·필터로 꺼둔 카테고리)는 제자리에 두고,
+    // 보이는 칸만 새 순서로 채운 전체 목록을 보낸다.
+    // 빼고 보내면 맨 뒤로 밀려서, 되돌리거나 필터를 풀었을 때 원래 자리에 있지 않다.
     const queue = [...visibleIds];
     const placeIds = (
       optimisticDays.find((d) => d.id === dayId)?.places ?? []
-    ).map((p) => (hiddenIds.includes(p.id) ? p.id : (queue.shift() ?? p.id)));
+    ).map((p) =>
+      hiddenIds.includes(p.id) || offCategories.includes(p.category)
+        ? p.id
+        : (queue.shift() ?? p.id),
+    );
 
     startTransition(async () => {
       applyOrder({ dayId, placeIds });
@@ -214,7 +237,7 @@ export function TripEditor({
       <div className="relative min-h-0 flex-1 lg:flex">
         <div className="absolute inset-0 lg:relative lg:inset-auto lg:order-2 lg:flex-1">
           <MapPanel
-            pins={activeDay?.places ?? []}
+            pins={shownPlaces}
             selected={selected}
             focusedId={focusedId}
           />
@@ -272,6 +295,10 @@ export function TripEditor({
           <ItineraryPanel
             days={visibleDays}
             activeDay={activeDay}
+            shownPlaces={shownPlaces}
+            offCategories={offCategories}
+            onToggleCategory={toggleCategory}
+            onClearFilter={() => setOffCategories([])}
             onSelectDay={(dayId) => {
               setActiveDayId(dayId);
               setFocusedPlaceId(null);

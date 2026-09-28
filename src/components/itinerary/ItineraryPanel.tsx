@@ -31,7 +31,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import type { EditorDay, EditorPlace } from "@/components/itinerary/TripEditor";
+import type { EditorDay, ShownPlace } from "@/components/itinerary/TripEditor";
 import { updatePlaceMemo, type UpdateMemoState } from "@/lib/actions/places";
 import { CATEGORIES, categoryLabel } from "@/lib/places/categories";
 import { MAX_PLACE_MEMO } from "@/lib/places/limits";
@@ -49,6 +49,10 @@ const SCREEN_READER_INSTRUCTIONS = {
 export function ItineraryPanel({
   days,
   activeDay,
+  shownPlaces,
+  offCategories,
+  onToggleCategory,
+  onClearFilter,
   onSelectDay,
   focusedId,
   onFocusPlace,
@@ -60,6 +64,11 @@ export function ItineraryPanel({
 }: {
   days: EditorDay[];
   activeDay: EditorDay;
+  /** activeDay 에서 카테고리 필터를 거친 장소. 목록·드래그는 이것만 다룬다. */
+  shownPlaces: ShownPlace[];
+  offCategories: string[];
+  onToggleCategory: (category: string) => void;
+  onClearFilter: () => void;
   onSelectDay: (dayId: string) => void;
   focusedId: string | null;
   onFocusPlace: (placeId: string | null) => void;
@@ -81,13 +90,15 @@ export function ItineraryPanel({
     }),
   );
 
-  const placeIds = activeDay.places.map((p) => p.id);
+  const placeIds = shownPlaces.map((p) => p.id);
+  const filtering = offCategories.length > 0;
 
   function nameOf(id: UniqueIdentifier) {
-    return activeDay.places.find((p) => p.id === id)?.name ?? "장소";
+    return shownPlaces.find((p) => p.id === id)?.name ?? "장소";
   }
+  // 필터가 켜지면 목록 인덱스와 방문 순번이 다르다. 카드에 보이는 번호로 알린다.
   function positionOf(id: UniqueIdentifier) {
-    return placeIds.indexOf(String(id)) + 1;
+    return shownPlaces.find((p) => p.id === id)?.order ?? 0;
   }
 
   const announcements: Announcements = {
@@ -157,8 +168,42 @@ export function ItineraryPanel({
             {formatDayDate(activeDay.date)}
           </span>
           <span className="text-[12px] text-ink-soft">
-            {activeDay.places.length}곳
+            {filtering
+              ? `${shownPlaces.length} / ${activeDay.places.length}곳`
+              : `${activeDay.places.length}곳`}
           </span>
+        </div>
+
+        <div
+          role="group"
+          aria-label="카테고리 필터"
+          className="flex gap-1.75 overflow-x-auto px-4 scrollbar-none lg:px-5.5"
+        >
+          {CATEGORIES.map((c) => {
+            const on = !offCategories.includes(c.value);
+            return (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => onToggleCategory(c.value)}
+                aria-pressed={on}
+                className={`flex flex-none items-center gap-1.5 rounded-pill border py-1.5 pr-3 pl-2.5 text-[12px] font-semibold transition-colors ${
+                  on
+                    ? `${c.tint} ${c.deep} border-transparent`
+                    : "border-line text-ink-mute hover:bg-surface-hover"
+                }`}
+              >
+                <span aria-hidden className={`size-2 rounded-pill ${c.dot}`} />
+                {c.label}
+              </button>
+            );
+          })}
+          {/* 데스크톱은 날짜 줄에 "보이는 수 / 전체" 가 있다. 모바일은 그 줄이 없어 여기서 알린다. */}
+          {filtering ? (
+            <span className="flex-none self-center pl-1 text-[12px] text-ink-soft lg:hidden">
+              {activeDay.places.length - shownPlaces.length}곳 가려짐
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -167,42 +212,47 @@ export function ItineraryPanel({
           <EmptyDay onSearch={onAddPlace} />
         ) : (
           <>
-            <DndContext
-              id={dndId}
-              sensors={sensors}
-              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-              accessibility={{
-                announcements,
-                screenReaderInstructions: SCREEN_READER_INSTRUCTIONS,
-              }}
-              onDragStart={() => setSwipedId(null)}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={placeIds}
-                strategy={verticalListSortingStrategy}
+            {shownPlaces.length === 0 ? (
+              <FilteredEmpty onClear={onClearFilter} />
+            ) : (
+              <DndContext
+                id={dndId}
+                sensors={sensors}
+                modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+                accessibility={{
+                  announcements,
+                  screenReaderInstructions: SCREEN_READER_INSTRUCTIONS,
+                }}
+                onDragStart={() => setSwipedId(null)}
+                onDragEnd={handleDragEnd}
               >
-                <ol className="flex flex-col gap-2.25 lg:gap-2.5">
-                  {activeDay.places.map((p, i) => (
-                    <PlaceCard
-                      key={p.id}
-                      place={p}
-                      order={i + 1}
-                      expanded={focusedId === p.id}
-                      onToggleExpanded={() =>
-                        onFocusPlace(focusedId === p.id ? null : p.id)
-                      }
-                      swiped={swipedId === p.id}
-                      onSwipedChange={(open) => setSwipedId(open ? p.id : null)}
-                      onDelete={() => {
-                        setSwipedId(null);
-                        onDeletePlace(p.id);
-                      }}
-                    />
-                  ))}
-                </ol>
-              </SortableContext>
-            </DndContext>
+                <SortableContext
+                  items={placeIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <ol className="flex flex-col gap-2.25 lg:gap-2.5">
+                    {shownPlaces.map((p) => (
+                      <PlaceCard
+                        key={p.id}
+                        place={p}
+                        expanded={focusedId === p.id}
+                        onToggleExpanded={() =>
+                          onFocusPlace(focusedId === p.id ? null : p.id)
+                        }
+                        swiped={swipedId === p.id}
+                        onSwipedChange={(open) =>
+                          setSwipedId(open ? p.id : null)
+                        }
+                        onDelete={() => {
+                          setSwipedId(null);
+                          onDeletePlace(p.id);
+                        }}
+                      />
+                    ))}
+                  </ol>
+                </SortableContext>
+              </DndContext>
+            )}
 
             <button
               type="button"
@@ -231,15 +281,13 @@ const DESKTOP_QUERY = "(min-width: 64rem)";
  */
 function PlaceCard({
   place,
-  order,
   expanded,
   onToggleExpanded,
   swiped,
   onSwipedChange,
   onDelete,
 }: {
-  place: EditorPlace;
-  order: number;
+  place: ShownPlace;
   expanded: boolean;
   onToggleExpanded: () => void;
   swiped: boolean;
@@ -387,7 +435,7 @@ function PlaceCard({
                   : `size-6.5 text-[13px] ${tint} ${deep}`
               }`}
             >
-              {order}
+              {place.order}
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-1 lg:gap-1.5">
               <span
@@ -486,7 +534,7 @@ function PlaceDetail({
   place,
   onDelete,
 }: {
-  place: EditorPlace;
+  place: ShownPlace;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -620,6 +668,24 @@ function MemoForm({
         </button>
       </div>
     </form>
+  );
+}
+
+/** Day 에 장소는 있지만 필터로 전부 가려진 상태. 3f(장소 0개)와 구분한다. */
+function FilteredEmpty({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-card border border-dashed border-dashed-line bg-sunken p-5">
+      <p className="text-[15px] font-semibold text-ink">
+        선택한 카테고리의 장소가 없어요
+      </p>
+      <button
+        type="button"
+        onClick={onClear}
+        className="rounded-control border border-control-line bg-surface px-3.5 py-2.25 text-[12.5px] font-semibold text-ink transition-colors hover:bg-surface-hover"
+      >
+        필터 해제
+      </button>
+    </div>
   );
 }
 
