@@ -14,7 +14,7 @@ import { Wordmark } from "@/components/brand/Wordmark";
 import { ItineraryPanel } from "@/components/itinerary/ItineraryPanel";
 import { MapPanel } from "@/components/map/MapPanel";
 import { PlaceSearch } from "@/components/places/PlaceSearch";
-import { AddPlaceForm } from "@/components/trips/AddPlaceForm";
+import { AddPlaceForm } from "@/components/itinerary/AddPlaceForm";
 import { ChevronLeft } from "@/components/ui/icons";
 import { deletePlace, reorderPlaces } from "@/lib/actions/places";
 import type { SelectedPlace } from "@/lib/places/types";
