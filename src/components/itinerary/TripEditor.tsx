@@ -84,6 +84,9 @@ export function TripEditor({
   // 되돌리기와 에러는 따로 띄운다. 에러가 되돌리기를 덮으면 대기 중인 삭제를 취소할 수 없다.
   const [undoOpen, setUndoOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // 화면 변화(탭 전환)로만 드러나는 결과를 스크린리더에 알린다.
+  // 같은 문구가 연달아 오면 다시 읽지 않으므로 장소 이름을 넣는다.
+  const [statusMessage, setStatusMessage] = useState("");
   const pendingRef = useRef<{
     placeId: string;
     timer: ReturnType<typeof setTimeout>;
@@ -218,6 +221,10 @@ export function TripEditor({
   return (
     <div className="flex h-dvh flex-col bg-canvas">
       <h1 className="sr-only lg:hidden">{trip.title}</h1>
+      {/* 라이브 영역은 내용이 바뀌기 전부터 DOM 에 있어야 읽힌다. */}
+      <p role="status" className="sr-only">
+        {statusMessage}
+      </p>
       <header className="hidden h-16 flex-none items-center gap-3.5 border-b border-line bg-surface px-5.5 lg:flex">
         <Link href="/">
           <Wordmark className="text-[16px]" />
@@ -309,6 +316,15 @@ export function TripEditor({
             onToggleExpanded={() => setSheetExpanded((v) => !v)}
             onAddPlace={focusSearch}
             onDeletePlace={requestDelete}
+            onMovedPlace={(dayId, placeName) => {
+              setActiveDayId(dayId);
+              const day = days.find((d) => d.id === dayId);
+              setStatusMessage(
+                day
+                  ? `${placeName}을(를) ${day.dayNumber}일차로 옮겼습니다`
+                  : "",
+              );
+            }}
             onReorderPlaces={(placeIds) =>
               handleReorder(activeDay.id, placeIds)
             }

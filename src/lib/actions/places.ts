@@ -123,6 +123,32 @@ export async function updatePlaceMemo(
   return {};
 }
 
+export type MovePlaceState = { error?: string };
+
+export async function movePlace(
+  placeId: string,
+  toDayId: string,
+): Promise<MovePlaceState> {
+  if (typeof placeId !== "string" || typeof toDayId !== "string") {
+    return { error: "장소를 옮기지 못했습니다." };
+  }
+  if (!toDayId) return { error: "옮길 일차를 선택해주세요." };
+
+  const supabase = await createClient();
+  const { data: tripId, error } = await supabase.rpc("move_place", {
+    p_place_id: placeId,
+    p_to_day_id: toDayId,
+  });
+
+  if (error) {
+    console.error("move_place 실패", { placeId, toDayId, error });
+    return { error: "장소를 옮기지 못했습니다." };
+  }
+
+  if (tripId) revalidatePath(`/trips/${tripId}`);
+  return {};
+}
+
 // 페이지 조회가 PostgREST max_rows(1000)에서 잘리므로 화면이 이보다 많이 보낼 일은 없다.
 const MAX_REORDER_IDS = 1000;
 

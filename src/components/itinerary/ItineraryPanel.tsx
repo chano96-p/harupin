@@ -32,7 +32,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import type { EditorDay, ShownPlace } from "@/components/itinerary/TripEditor";
-import { updatePlaceMemo, type UpdateMemoState } from "@/lib/actions/places";
+import {
+  movePlace,
+  updatePlaceMemo,
+  type MovePlaceState,
+  type UpdateMemoState,
+} from "@/lib/actions/places";
 import { CATEGORIES, categoryLabel } from "@/lib/places/categories";
 import { MAX_PLACE_MEMO } from "@/lib/places/limits";
 import { formatDayDate } from "@/lib/trips/format";
@@ -61,6 +66,7 @@ export function ItineraryPanel({
   onAddPlace,
   onDeletePlace,
   onReorderPlaces,
+  onMovedPlace,
 }: {
   days: EditorDay[];
   activeDay: EditorDay;
@@ -77,6 +83,8 @@ export function ItineraryPanel({
   onAddPlace: () => void;
   onDeletePlace: (placeId: string) => void;
   onReorderPlaces: (placeIds: string[]) => void;
+  /** 다른 Day 로 옮기기가 저장된 뒤. 그 Day 로 탭을 옮겨 펼친 카드를 계속 보여준다. */
+  onMovedPlace: (dayId: string, placeName: string) => void;
 }) {
   // 스와이프로 삭제 버튼이 열린 카드. 한 번에 하나만 연다.
   const [swipedId, setSwipedId] = useState<string | null>(null);
@@ -235,6 +243,9 @@ export function ItineraryPanel({
                       <PlaceCard
                         key={p.id}
                         place={p}
+                        days={days}
+                        currentDayId={activeDay.id}
+                        onMoved={onMovedPlace}
                         expanded={focusedId === p.id}
                         onToggleExpanded={() =>
                           onFocusPlace(focusedId === p.id ? null : p.id)
@@ -281,6 +292,9 @@ const DESKTOP_QUERY = "(min-width: 64rem)";
  */
 function PlaceCard({
   place,
+  days,
+  currentDayId,
+  onMoved,
   expanded,
   onToggleExpanded,
   swiped,
@@ -288,6 +302,9 @@ function PlaceCard({
   onDelete,
 }: {
   place: ShownPlace;
+  days: EditorDay[];
+  currentDayId: string;
+  onMoved: (dayId: string, placeName: string) => void;
   expanded: boolean;
   onToggleExpanded: () => void;
   swiped: boolean;
@@ -520,46 +537,75 @@ function PlaceCard({
           )}
         </div>
 
-        {expanded ? <PlaceDetail place={place} onDelete={onDelete} /> : null}
+        {expanded ? (
+          <PlaceDetail
+            place={place}
+            days={days}
+            currentDayId={currentDayId}
+            onMoved={onMoved}
+            onDelete={onDelete}
+          />
+        ) : null}
       </div>
     </li>
   );
 }
 
 /**
- * 펼친 카드의 본문. 지금은 메모만 있다.
+ * 펼친 카드의 본문. 메모와 일차 이동.
  * 주소·영업시간(시안 3d)은 Place Details 상위 등급 호출 + place_cache 가 필요해 2단계 캐시 작업과 함께 넣는다.
  */
 function PlaceDetail({
   place,
+  days,
+  currentDayId,
+  onMoved,
   onDelete,
 }: {
   place: ShownPlace;
+  days: EditorDay[];
+  currentDayId: string;
+  onMoved: (dayId: string, placeName: string) => void;
   onDelete: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  // 편집창을 닫으면(저장·취소) 그 안의 버튼이 사라져 포커스가 body 로 빠진다.
-  // 다시 나타나는 "메모 수정" 버튼으로 돌려준다.
-  const editButtonRef = useRef<HTMLButtonElement>(null);
-  const returnFocusRef = useRef(false);
+  const [mode, setMode] = useState<"view" | "memo" | "move">("view");
+  // 폼을 닫으면(저장·취소) 그 안의 버튼이 사라져 포커스가 body 로 빠진다.
+  // 폼을 연 버튼이 다시 나타나면 그리로 돌려준다.
+  const memoButtonRef = useRef<HTMLButtonElement>(null);
+  const moveButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<"memo" | "move" | null>(null);
 
   useEffect(() => {
-    if (editing || !returnFocusRef.current) return;
-    returnFocusRef.current = false;
-    editButtonRef.current?.focus();
-  }, [editing]);
+    if (mode !== "view" || !returnFocusRef.current) return;
+    const target =
+      returnFocusRef.current === "memo" ? memoButtonRef : moveButtonRef;
+    returnFocusRef.current = null;
+    target.current?.focus();
+  }, [mode]);
 
-  function closeEditor() {
-    returnFocusRef.current = true;
-    setEditing(false);
+  function closeForm() {
+    returnFocusRef.current = mode === "view" ? null : mode;
+    setMode("view");
   }
 
-  if (editing) {
+  if (mode === "memo") {
     return (
       <MemoForm
         placeId={place.id}
         initialMemo={place.memo ?? ""}
-        onClose={closeEditor}
+        onClose={closeForm}
+      />
+    );
+  }
+
+  if (mode === "move") {
+    return (
+      <MoveForm
+        placeId={place.id}
+        days={days}
+        currentDayId={currentDayId}
+        onMoved={(dayId) => onMoved(dayId, place.name)}
+        onClose={closeForm}
       />
     );
   }
@@ -578,13 +624,24 @@ function PlaceDetail({
       </dl>
       <div className="flex items-center gap-2 lg:gap-2.25">
         <button
-          ref={editButtonRef}
+          ref={memoButtonRef}
           type="button"
-          onClick={() => setEditing(true)}
+          onClick={() => setMode("memo")}
           className="h-11 flex-1 rounded-control border border-line text-[13px] font-semibold text-ink transition-colors hover:bg-surface-hover lg:h-auto lg:flex-none lg:px-3 lg:py-2 lg:text-[12.5px]"
         >
           {place.memo ? "메모 수정" : "메모 추가"}
         </button>
+        {days.length > 1 ? (
+          <button
+            ref={moveButtonRef}
+            type="button"
+            onClick={() => setMode("move")}
+            className="h-11 flex-1 rounded-control border border-line text-[13px] font-semibold text-ink transition-colors hover:bg-surface-hover lg:h-auto lg:flex-none lg:px-3 lg:py-2 lg:text-[12.5px]"
+          >
+            <span className="lg:hidden">일차 이동</span>
+            <span className="hidden lg:inline">다른 일차로 이동</span>
+          </button>
+        ) : null}
         <span aria-hidden className="hidden flex-1 lg:block" />
         <button
           type="button"
@@ -665,6 +722,105 @@ function MemoForm({
           className="h-11 flex-1 rounded-control bg-ink text-[13px] font-semibold text-surface disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
         >
           {pending ? "저장하는 중…" : "저장"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * 편집할 때만 마운트한다(MemoForm 과 같은 이유). select 도 controlled 로 둔다.
+ * 옮긴 장소는 받는 Day 의 맨 뒤에 붙는다(move_place).
+ */
+function MoveForm({
+  placeId,
+  days,
+  currentDayId,
+  onMoved,
+  onClose,
+}: {
+  placeId: string;
+  days: EditorDay[];
+  currentDayId: string;
+  onMoved: (dayId: string) => void;
+  onClose: () => void;
+}) {
+  const targets = days.filter((d) => d.id !== currentDayId);
+  // 기본값은 다음 날. 마지막 날이면 첫 후보(보통 전날까지 중 첫째 날)로.
+  const currentIndex = days.findIndex((d) => d.id === currentDayId);
+  const [toDayId, setToDayId] = useState(
+    days[currentIndex + 1]?.id ?? targets[0]?.id ?? "",
+  );
+  const [state, formAction, pending] = useActionState<MovePlaceState, FormData>(
+    async () => {
+      const result = await movePlace(placeId, toDayId);
+      // 탭 이동을 revalidate 된 새 목록과 같은 transition 에 넣는다.
+      // 따로 반영되면 옮겨 간 Day 탭이 잠깐 이 장소 없이 보인다.
+      if (!result.error) {
+        startTransition(() => {
+          onMoved(toDayId);
+          onClose();
+        });
+      }
+      return result;
+    },
+    {},
+  );
+  const selectId = useId();
+
+  return (
+    <form action={formAction} className="flex flex-col gap-2">
+      <label htmlFor={selectId} className="text-[12.5px] text-ink-mute">
+        옮길 일차
+      </label>
+      <div className="relative">
+        <select
+          id={selectId}
+          value={toDayId}
+          onChange={(e) => setToDayId(e.target.value)}
+          disabled={pending}
+          autoFocus
+          className="h-11 w-full appearance-none rounded-control border border-control-line bg-surface pr-10 pl-3 text-[14px] text-ink outline-none focus:border-ink lg:h-10"
+        >
+          {targets.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.dayNumber}일차 · {formatDayDate(d.date)}
+            </option>
+          ))}
+        </select>
+        <svg
+          aria-hidden
+          viewBox="0 0 16 16"
+          className="pointer-events-none absolute top-1/2 right-3.5 size-3.5 -translate-y-1/2 text-ink-soft"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m4 6 4 4 4-4" />
+        </svg>
+      </div>
+      {state.error ? (
+        <p role="alert" className="text-[12.5px] text-food-deep">
+          {state.error}
+        </p>
+      ) : null}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={pending}
+          className="h-11 rounded-control border border-control-line px-4 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-hover disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
+        >
+          취소
+        </button>
+        <button
+          type="submit"
+          disabled={pending || !toDayId}
+          className="h-11 flex-1 rounded-control bg-ink text-[13px] font-semibold text-surface disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
+        >
+          {pending ? "옮기는 중…" : "옮기기"}
         </button>
       </div>
     </form>
