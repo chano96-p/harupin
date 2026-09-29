@@ -54,7 +54,7 @@ export function MemoForm({
         className="resize-none rounded-control border border-control-line bg-surface px-3 py-2.5 text-[13.5px] leading-relaxed text-ink outline-none focus:border-ink"
       />
       {state.error ? (
-        <p role="alert" className="text-[12.5px] text-food-deep">
+        <p role="alert" className="text-[12.5px] text-danger">
           {state.error}
         </p>
       ) : null}
@@ -70,7 +70,7 @@ export function MemoForm({
         <button
           type="submit"
           disabled={pending}
-          className="h-11 flex-1 rounded-control bg-ink text-[13px] font-semibold text-surface disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
+          className="h-11 flex-1 rounded-control bg-brand-deep text-[13px] font-semibold text-white transition-colors hover:bg-brand-deeper disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
         >
           {pending ? "저장하는 중…" : "저장"}
         </button>

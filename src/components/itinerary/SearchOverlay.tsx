@@ -3,7 +3,7 @@ import type { Ref } from "react";
 
 import { AddPlaceForm } from "@/components/itinerary/AddPlaceForm";
 import { PlaceSearch } from "@/components/places/PlaceSearch";
-import { ChevronLeft } from "@/components/ui/icons";
+import { ArrowLeft } from "@/components/ui/icons";
 import type { SelectedPlace } from "@/lib/places/types";
 import type { Day } from "@/lib/trips/types";
 
@@ -30,14 +30,14 @@ export function SearchOverlay({
   onSaved: (dayId: string, placeId: string) => void;
 }) {
   return (
-    <div className="pointer-events-none absolute inset-x-3.5 top-3.5 z-10 flex flex-col gap-2 lg:inset-x-5 lg:top-4.5">
+    <div className="pointer-events-none absolute inset-x-3.5 top-3.5 z-10 flex flex-col gap-2 lg:inset-x-6 lg:top-5">
       <div className="flex gap-2">
         <Link
           href="/"
           aria-label="내 여행 목록"
-          className="pointer-events-auto grid size-11 flex-none place-items-center rounded-pill border border-line bg-surface text-ink shadow-overlay lg:hidden"
+          className="pointer-events-auto grid size-12 flex-none place-items-center rounded-pill border border-line bg-surface text-ink shadow-overlay lg:hidden"
         >
-          <ChevronLeft className="size-4" />
+          <ArrowLeft className="size-5" />
         </Link>
         <div className="pointer-events-auto min-w-0 flex-1">
           <PlaceSearch inputRef={searchRef} onSelect={onSelect} />

@@ -4,6 +4,7 @@ import { CategoryFilter } from "@/components/itinerary/CategoryFilter";
 import { DayTabs } from "@/components/itinerary/DayTabs";
 import { EmptyDay, FilteredEmpty } from "@/components/itinerary/EmptyStates";
 import { PlaceList } from "@/components/itinerary/PlaceList";
+import { Plus } from "@/components/ui/icons";
 import { formatDayDate } from "@/lib/trips/format";
 import type { Day, ShownPlace } from "@/lib/trips/types";
 
@@ -51,7 +52,7 @@ export function ItineraryPanel({
 
   return (
     <section
-      className={`absolute inset-x-0 bottom-0 flex flex-col rounded-t-[20px] border-t border-line bg-canvas shadow-[0_-2px_12px_rgb(31_31_29/0.08)] transition-[height] duration-200 ${expanded ? "h-[85%]" : "h-[40%]"} lg:static lg:h-auto lg:w-[45%] lg:flex-none lg:rounded-none lg:border-t-0 lg:border-r lg:shadow-none lg:transition-none`}
+      className={`absolute inset-x-0 bottom-0 flex flex-col rounded-t-[22px] border-t border-line bg-canvas shadow-[0_-8px_28px_-6px_rgb(49_37_28/0.12)] transition-[height] duration-200 ${expanded ? "h-[85%]" : "h-[40%]"} lg:static lg:h-auto lg:w-[42%] lg:max-w-130 lg:flex-none lg:rounded-none lg:border-t-0 lg:border-r lg:shadow-none lg:transition-none`}
     >
       <button
         type="button"
@@ -60,21 +61,21 @@ export function ItineraryPanel({
         aria-label={expanded ? "목록 접기" : "목록 펼치기"}
         className="flex h-6 flex-none items-center justify-center lg:hidden"
       >
-        <span className="h-1 w-9.5 rounded-pill bg-dashed-line" />
+        <span className="h-1 w-10 rounded-pill bg-line-strong" />
       </button>
 
-      <div className="flex flex-none flex-col gap-3.5 pb-3.5 lg:pt-4.5">
+      <div className="flex flex-none flex-col gap-4 pb-4 lg:pt-6">
         <DayTabs
           days={days}
           activeDayId={activeDay.id}
           onSelect={onSelectDay}
         />
 
-        <div className="hidden items-baseline gap-2 px-5.5 lg:flex">
-          <span className="text-[15px] font-semibold text-ink">
+        <div className="hidden items-baseline gap-2 px-6 lg:flex">
+          <span className="text-[18px] font-bold tracking-[-0.02em] text-ink">
             {formatDayDate(activeDay.date)}
           </span>
-          <span className="text-[12px] text-ink-soft">
+          <span className="text-[12.5px] text-ink-soft">
             {filtering
               ? `${shownPlaces.length} / ${activeDay.places.length}곳`
               : `${activeDay.places.length}곳`}
@@ -85,10 +86,11 @@ export function ItineraryPanel({
           offCategories={offCategories}
           hiddenCount={activeDay.places.length - shownPlaces.length}
           onToggle={onToggleCategory}
+          onClear={onClearFilter}
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2.25 overflow-y-auto px-4 pb-6 lg:gap-2.5 lg:px-5.5 lg:pt-1 lg:pb-5.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 pb-6 lg:px-6 lg:pt-1 lg:pb-6">
         {activeDay.places.length === 0 ? (
           <EmptyDay onSearch={onAddPlace} />
         ) : (
@@ -111,9 +113,9 @@ export function ItineraryPanel({
             <button
               type="button"
               onClick={onAddPlace}
-              className="flex-none rounded-card border border-dashed border-dashed-line p-3 text-[13px] font-semibold text-ink-soft transition-colors hover:bg-surface-hover hover:text-ink lg:p-3.25"
+              className="flex h-12 flex-none items-center justify-center gap-1.5 rounded-card border border-dashed border-dashed-line text-[13.5px] font-bold text-brand-deep transition-colors hover:border-brand hover:bg-brand-tint"
             >
-              + 장소 추가
+              <Plus className="size-4" />이 날에 장소 추가
             </button>
           </>
         )}

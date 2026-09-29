@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 
+import { Search } from "@/components/ui/icons";
 import type { SelectedPlace, Suggestion } from "@/lib/places/types";
 
 const DEBOUNCE_MS = 300;
@@ -116,10 +117,7 @@ export function PlaceSearch({
 
   return (
     <div className="relative w-full">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 left-4 size-3.25 -translate-y-1/2 rounded-pill border-2 border-ink-mute lg:left-4.5"
-      />
+      <Search className="pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2 text-ink-mute" />
       <input
         ref={inputRef}
         type="text"
@@ -127,9 +125,9 @@ export function PlaceSearch({
         onChange={handleChange}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         onBlur={() => setOpen(false)}
-        placeholder="장소 검색"
+        placeholder="장소를 검색해 일정에 추가"
         aria-label="장소 검색"
-        className="h-11 w-full rounded-pill border border-line bg-surface pr-4 pl-9.5 text-[13.5px] text-ink shadow-overlay outline-none placeholder:text-ink-mute focus:border-ink lg:h-12 lg:pl-10.5 lg:text-[14px]"
+        className="h-12 w-full rounded-control border border-control-line bg-surface pr-4 pl-11 text-[14px] text-ink shadow-overlay outline-none placeholder:text-ink-mute focus:border-ink lg:h-13"
       />
 
       {open && (suggestions.length > 0 || loading || error) ? (
@@ -138,10 +136,10 @@ export function PlaceSearch({
         // 아예 발동하지 않는다(실측: mousedown 을 막지 않으면 선택 자체가 실패한다).
         <ul
           onMouseDown={(e) => e.preventDefault()}
-          className="absolute top-full left-0 z-10 mt-1.5 w-full overflow-hidden rounded-card border border-line bg-surface shadow-overlay"
+          className="absolute top-full left-0 z-10 mt-2 w-full overflow-hidden rounded-card border border-line bg-surface p-1.5 shadow-pop"
         >
           {error ? (
-            <li className="px-3.5 py-3 text-[13px] text-food-deep">{error}</li>
+            <li className="px-3.5 py-3 text-[13px] text-danger">{error}</li>
           ) : loading && suggestions.length === 0 ? (
             <li className="px-3.5 py-3 text-[13px] text-ink-soft">검색 중…</li>
           ) : (
@@ -150,9 +148,9 @@ export function PlaceSearch({
                 <button
                   type="button"
                   onClick={() => void selectSuggestion(s)}
-                  className="flex w-full flex-col gap-0.5 px-3.5 py-2.5 text-left transition-colors hover:bg-surface-hover"
+                  className="flex w-full flex-col gap-0.5 rounded-[8px] px-3 py-2.5 text-left transition-colors hover:bg-surface-hover"
                 >
-                  <span className="text-[14px] font-semibold text-ink">
+                  <span className="text-[14px] font-bold text-ink">
                     {s.mainText}
                   </span>
                   {s.secondaryText ? (

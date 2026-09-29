@@ -7,6 +7,13 @@ export function formatDayDate(date: string): string {
   return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 (${WEEKDAYS[d.getUTCDay()]})`;
 }
 
+/** 일차 탭용. "2026-09-04" → "9.04 금" */
+export function formatDayShort(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${d.getUTCMonth() + 1}.${day} ${WEEKDAYS[d.getUTCDay()]}`;
+}
+
 /** "2026-09-14" → "2026.09.14" */
 export function formatDate(date: string): string {
   return date.replaceAll("-", ".");

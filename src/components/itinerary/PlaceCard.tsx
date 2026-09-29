@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { useSwipeReveal } from "@/components/itinerary/hooks/useSwipeReveal";
 import { PlaceDetail } from "@/components/itinerary/PlaceDetail";
-import { ChevronUp } from "@/components/ui/icons";
+import { CategoryIcon, ChevronUp, StickyNote } from "@/components/ui/icons";
 import { categoryLabel, findCategory } from "@/lib/places/categories";
 import type { Day, ShownPlace } from "@/lib/trips/types";
 
@@ -71,6 +71,7 @@ export function PlaceCard({
   const tint = cat?.tint ?? "bg-lodging-tint";
   const deep = cat?.deep ?? "text-lodging-deep";
   const dot = cat?.dot ?? "bg-lodging";
+  const onDot = cat?.onDot ?? "text-white";
   const { offset } = swipe;
 
   function handleToggle() {
@@ -86,7 +87,7 @@ export function PlaceCard({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`relative overflow-hidden rounded-card ${isDragging ? "z-10 shadow-[0_4px_16px_rgb(31_31_29/0.12)]" : ""}`}
+      className={`relative overflow-hidden rounded-card ${isDragging ? "z-10 shadow-pop" : ""}`}
     >
       {/* 스와이프 제스처 전용 버튼. 키보드·스크린리더는 카드 안의 삭제 버튼을 쓴다. */}
       <button
@@ -94,7 +95,7 @@ export function PlaceCard({
         onClick={onDelete}
         aria-hidden
         tabIndex={-1}
-        className={`absolute inset-0 flex justify-end bg-food text-white lg:hidden ${offset === 0 ? "invisible" : ""}`}
+        className={`absolute inset-0 flex justify-end bg-danger text-white lg:hidden ${offset === 0 ? "invisible" : ""}`}
       >
         <span className="flex w-18 flex-col items-center justify-center gap-0.75">
           <span aria-hidden className="text-[17px] leading-none">
@@ -111,43 +112,50 @@ export function PlaceCard({
         {...swipe.handlers}
         onClick={() => swiped && onSwipedChange(false)}
         style={{ width: `calc(100% + ${offset}px)` }}
-        className={`relative flex touch-pan-y flex-col rounded-card border bg-surface ${expanded ? "gap-3.5 border-ink p-3.5 lg:p-3.75" : "border-line p-3.25 lg:p-3.5"} ${swipe.dragging ? "" : "transition-[width] duration-200"}`}
+        className={`relative flex touch-pan-y flex-col rounded-card border bg-surface ${expanded ? "gap-3.5 border-ink p-3.5 shadow-card lg:p-4" : "border-line p-3.5"} ${swipe.dragging ? "" : "transition-[width] duration-200"}`}
       >
-        <div
-          className={`flex gap-2.75 lg:gap-3 ${expanded ? "items-start" : "items-center lg:items-start"}`}
-        >
+        <div className="flex items-start gap-3">
           <button
             ref={toggleRef}
             type="button"
             onClick={handleToggle}
             aria-expanded={expanded}
-            className={`flex min-w-0 flex-1 gap-2.75 text-left lg:gap-3 ${expanded ? "items-start" : "items-center lg:items-start"}`}
+            className="flex min-w-0 flex-1 items-start gap-3 text-left"
           >
             <span
-              className={`grid flex-none place-items-center rounded-pill font-semibold ${
+              className={`grid flex-none place-items-center rounded-pill font-bold ${
                 expanded
-                  ? `size-7 text-[13.5px] text-white ${dot}`
-                  : `size-6.5 text-[13px] ${tint} ${deep}`
+                  ? `size-7 text-[13px] ${dot} ${onDot}`
+                  : `size-6.5 text-[12px] ${tint} ${deep}`
               }`}
             >
               {place.order}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col gap-1 lg:gap-1.5">
-              <span
-                className={`font-semibold tracking-[-0.01em] text-ink ${expanded ? "text-[16px] wrap-break-word" : "truncate text-[14.5px] lg:text-[15px]"}`}
-              >
-                {place.name}
-              </span>
-              {expanded ? null : (
-                <span className="text-[12px] text-ink-soft lg:hidden">
-                  {categoryLabel(place.category)}
+            <span className="flex min-w-0 flex-1 flex-col gap-1.25">
+              <span className="flex min-w-0 items-center gap-1.75">
+                <CategoryIcon
+                  category={place.category}
+                  className={`size-3.75 flex-none ${deep}`}
+                />
+                <span
+                  className={`min-w-0 font-bold tracking-[-0.01em] text-ink ${expanded ? "text-[16px] wrap-break-word" : "truncate text-[14.5px]"}`}
+                >
+                  {place.name}
                 </span>
-              )}
-              <span
-                className={`self-start rounded-pill px-2 py-0.75 text-[11px] font-semibold ${tint} ${deep} ${expanded ? "inline" : "hidden lg:inline"}`}
-              >
+              </span>
+              <span className="text-[11.5px] text-ink-soft">
                 {categoryLabel(place.category)}
               </span>
+              {/* 전문은 펼치면 보인다. 버튼 이름으로 긴 메모를 통째로 읽지 않게 숨긴다. */}
+              {!expanded && place.memo ? (
+                <span
+                  aria-hidden
+                  className="mt-0.5 flex min-w-0 items-center gap-1.5 rounded-[7px] bg-sunken px-2.25 py-1.5 text-[11.5px] text-ink-soft"
+                >
+                  <StickyNote className="size-3.25 flex-none" />
+                  <span className="truncate">{place.memo}</span>
+                </span>
+              ) : null}
             </span>
           </button>
 
@@ -175,7 +183,7 @@ export function PlaceCard({
                 type="button"
                 onClick={onDelete}
                 aria-label={`${place.name} 삭제`}
-                className="grid size-5.5 flex-none place-items-center rounded-pill text-[15px] text-ink-mute transition-colors hover:bg-surface-hover hover:text-food max-lg:not-focus-visible:sr-only"
+                className="grid size-5.5 flex-none place-items-center rounded-pill text-[15px] text-ink-mute transition-colors hover:bg-surface-hover hover:text-danger max-lg:not-focus-visible:sr-only"
               >
                 <span aria-hidden>×</span>
               </button>
@@ -191,7 +199,7 @@ export function PlaceCard({
                   e.stopPropagation();
                 }}
                 aria-label={`${place.name} 순서 변경`}
-                className="-m-2 grid flex-none cursor-grab touch-none grid-cols-[repeat(2,3px)] gap-1 p-2 active:cursor-grabbing lg:-mt-0.5"
+                className="-m-2 grid flex-none cursor-grab touch-none grid-cols-[repeat(2,3px)] gap-1 p-2 active:cursor-grabbing"
               >
                 {Array.from({ length: 6 }, (_, i) => (
                   <span

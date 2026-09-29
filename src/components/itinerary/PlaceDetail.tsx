@@ -101,7 +101,7 @@ export function PlaceDetail({
         <button
           type="button"
           onClick={onDelete}
-          className="h-11 rounded-control px-3 text-[13px] font-semibold text-food-deep transition-colors hover:bg-food-tint lg:h-auto lg:py-2 lg:text-[12.5px]"
+          className="h-11 rounded-control px-3 text-[13px] font-semibold text-danger transition-colors hover:bg-danger-tint lg:h-auto lg:py-2 lg:text-[12.5px]"
         >
           삭제
         </button>

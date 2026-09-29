@@ -68,7 +68,7 @@ export function MoveForm({
         ))}
       </SelectField>
       {state.error ? (
-        <p role="alert" className="text-[12.5px] text-food-deep">
+        <p role="alert" className="text-[12.5px] text-danger">
           {state.error}
         </p>
       ) : null}
@@ -84,7 +84,7 @@ export function MoveForm({
         <button
           type="submit"
           disabled={pending || !toDayId}
-          className="h-11 flex-1 rounded-control bg-ink text-[13px] font-semibold text-surface disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
+          className="h-11 flex-1 rounded-control bg-brand-deep text-[13px] font-semibold text-white transition-colors hover:bg-brand-deeper disabled:opacity-60 lg:h-9.5 lg:text-[12.5px]"
         >
           {pending ? "옮기는 중…" : "옮기기"}
         </button>

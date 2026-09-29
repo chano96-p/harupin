@@ -9,6 +9,7 @@ export const CATEGORIES = [
     dot: "bg-food",
     tint: "bg-food-tint",
     deep: "text-food-deep",
+    onDot: "text-ink",
   },
   {
     value: "sight",
@@ -16,6 +17,7 @@ export const CATEGORIES = [
     dot: "bg-sight",
     tint: "bg-sight-tint",
     deep: "text-sight-deep",
+    onDot: "text-white",
   },
   {
     value: "activity",
@@ -23,6 +25,7 @@ export const CATEGORIES = [
     dot: "bg-activity",
     tint: "bg-activity-tint",
     deep: "text-activity-deep",
+    onDot: "text-white",
   },
   {
     value: "lodging",
@@ -30,6 +33,7 @@ export const CATEGORIES = [
     dot: "bg-lodging",
     tint: "bg-lodging-tint",
     deep: "text-lodging-deep",
+    onDot: "text-white",
   },
 ] as const;
 

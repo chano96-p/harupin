@@ -8,8 +8,8 @@ import type { ActionResult } from "@/lib/actions/types";
 import { MAX_TRIP_DAYS, MAX_TRIP_TITLE } from "@/lib/trips/limits";
 
 const FIELD =
-  "h-12 w-full rounded-control border border-control-line bg-surface px-3.25 text-[15px] text-ink outline-none placeholder:text-ink-mute focus:border-ink lg:h-10.5 lg:px-3 lg:text-[14px]";
-const LABEL = "text-[12.5px] font-semibold text-ink";
+  "h-12 w-full rounded-control border border-control-line bg-surface px-3.5 text-[15px] text-ink outline-none placeholder:text-ink-mute focus:border-ink lg:px-4 lg:text-[14px]";
+const LABEL = "text-[13px] font-bold text-ink";
 const DAY_MS = 86_400_000;
 
 function shiftDate(iso: string, days: number) {
@@ -47,7 +47,7 @@ export function NewTripDialog({ open }: { open: boolean }) {
       ref={ref}
       onClick={closeOnBackdrop}
       onClose={() => router.replace("/", { scroll: false })}
-      className="rounded-card m-0 mt-auto w-full max-w-none rounded-b-none bg-surface p-6 text-ink shadow-[0_8px_28px_rgb(31_31_29/0.18)] backdrop:bg-[rgb(31_31_29/0.32)] lg:m-auto lg:w-105 lg:rounded-b-card"
+      className="m-0 mt-auto w-full max-w-none rounded-t-panel bg-surface p-6 text-ink shadow-pop backdrop:bg-[rgb(23_26_24/0.36)] lg:m-auto lg:w-110 lg:rounded-panel lg:p-7"
     >
       {/* 열릴 때마다 새로 마운트한다. 이전 제출의 에러와 입력값이 남지 않는다. */}
       {open ? <NewTripForm onCancel={() => ref.current?.close()} /> : null}
@@ -79,7 +79,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
 
   return (
     <form ref={formRef} action={action} className="flex flex-col gap-4.5">
-      <h2 className="text-[18px] font-semibold tracking-[-0.01em]">새 여행</h2>
+      <h2 className="text-[20px] font-bold tracking-[-0.02em]">새 여행</h2>
 
       <div className="flex flex-col gap-1.75">
         <label className={LABEL} htmlFor="title">
@@ -128,7 +128,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
       </p>
 
       {state.error ? (
-        <p role="alert" className="text-[12.5px] text-food-deep">
+        <p role="alert" className="text-[12.5px] text-danger">
           {state.error}
         </p>
       ) : null}
@@ -137,14 +137,14 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
         <button
           type="submit"
           disabled={pending}
-          className="order-first h-13 rounded-control bg-ink px-5 text-[15px] font-semibold text-surface disabled:opacity-60 lg:order-last lg:h-10.5 lg:text-[13.5px]"
+          className="order-first h-13 rounded-control bg-brand-deep px-5 text-[15px] font-bold text-white transition-colors hover:bg-brand-deeper disabled:opacity-60 lg:order-last lg:h-11 lg:text-[14px]"
         >
           {pending ? "만드는 중…" : "만들기"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="h-12 rounded-control px-3.5 text-[14.5px] font-semibold text-ink-soft transition-colors hover:bg-surface-hover lg:hidden"
+          className="h-12 rounded-control px-3.5 text-[14.5px] font-bold text-ink transition-colors hover:bg-surface-hover lg:hidden"
         >
           취소
         </button>
@@ -153,7 +153,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
         <button
           type="button"
           onClick={resetAll}
-          className="hidden rounded-control px-3.5 text-[13.5px] font-semibold text-ink-soft transition-colors hover:bg-surface-hover lg:block"
+          className="hidden rounded-control px-4 text-[14px] font-bold text-ink transition-colors hover:bg-surface-hover lg:block"
         >
           초기화
         </button>
