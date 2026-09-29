@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 
-type Suggestion = { placeId: string; mainText: string; secondaryText: string };
-export type SelectedPlace = {
-  placeId: string;
-  name: string;
-  lat: number;
-  lng: number;
-};
+import type { SelectedPlace, Suggestion } from "@/lib/places/types";
 
 const DEBOUNCE_MS = 300;
 

@@ -13,37 +13,13 @@ import {
 import { Wordmark } from "@/components/brand/Wordmark";
 import { ItineraryPanel } from "@/components/itinerary/ItineraryPanel";
 import { MapPanel } from "@/components/map/MapPanel";
-import {
-  PlaceSearch,
-  type SelectedPlace,
-} from "@/components/places/PlaceSearch";
+import { PlaceSearch } from "@/components/places/PlaceSearch";
 import { AddPlaceForm } from "@/components/trips/AddPlaceForm";
+import { ChevronLeft } from "@/components/ui/icons";
 import { deletePlace, reorderPlaces } from "@/lib/actions/places";
+import type { SelectedPlace } from "@/lib/places/types";
 import { formatTripRange } from "@/lib/trips/format";
-
-export type EditorPlace = {
-  id: string;
-  name: string;
-  category: string;
-  lat: number;
-  lng: number;
-  memo: string | null;
-};
-/** 화면에 그리는 장소. order 는 삭제 대기를 뺀 방문 순번이고, 카테고리 필터와 무관하다. */
-export type ShownPlace = EditorPlace & { order: number };
-export type EditorDay = {
-  id: string;
-  dayNumber: number;
-  date: string;
-  places: EditorPlace[];
-};
-export type EditorTrip = {
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string;
-  region: string | null;
-};
+import type { Day, ShownPlace, Trip } from "@/lib/trips/types";
 
 const UNDO_MS = 5000;
 
@@ -54,13 +30,7 @@ const UNDO_MS = 5000;
  * 모바일에서는 지도가 전면에 깔리고 패널이 그 위에 시트로 뜨며,
  * lg 부터는 같은 두 요소가 좌우 스플릿으로 배치된다.
  */
-export function TripEditor({
-  trip,
-  days,
-}: {
-  trip: EditorTrip;
-  days: EditorDay[];
-}) {
+export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
   const router = useRouter();
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [selected, setSelected] = useState<SelectedPlace | null>(null);
@@ -258,18 +228,7 @@ export function TripEditor({
                 aria-label="내 여행 목록"
                 className="pointer-events-auto grid size-11 flex-none place-items-center rounded-pill border border-line bg-surface text-ink shadow-overlay lg:hidden"
               >
-                <svg
-                  aria-hidden
-                  viewBox="0 0 16 16"
-                  className="size-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M10 3 5 8l5 5" />
-                </svg>
+                <ChevronLeft className="size-4" />
               </Link>
               <div className="pointer-events-auto min-w-0 flex-1">
                 <PlaceSearch inputRef={searchRef} onSelect={selectPlace} />

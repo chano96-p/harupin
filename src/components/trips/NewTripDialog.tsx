@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { createTrip, type CreateTripState } from "@/lib/actions/trips";
+import { createTrip } from "@/lib/actions/trips";
+import type { ActionResult } from "@/lib/actions/types";
 import { MAX_TRIP_DAYS, MAX_TRIP_TITLE } from "@/lib/trips/limits";
 
 const FIELD =
@@ -56,7 +57,7 @@ export function NewTripDialog({ open }: { open: boolean }) {
 
 function NewTripForm({ onCancel }: { onCancel: () => void }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, action, pending] = useActionState<CreateTripState, FormData>(
+  const [state, action, pending] = useActionState<ActionResult, FormData>(
     createTrip,
     {},
   );

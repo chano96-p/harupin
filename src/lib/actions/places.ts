@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import type { ActionResult } from "@/lib/actions/types";
 import { isCategory } from "@/lib/places/categories";
 import {
   MAX_GOOGLE_PLACE_ID,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/places/limits";
 import { createClient } from "@/lib/supabase/server";
 
-export type AddPlaceState = { error?: string; ok?: boolean };
+export type AddPlaceState = ActionResult & { ok?: boolean };
 
 export async function addPlace(
   _prev: AddPlaceState,
@@ -58,8 +59,6 @@ export async function addPlace(
   return { ok: true };
 }
 
-export type DeletePlaceResult = { error?: string };
-
 /**
  * revalidate: 화면을 떠나는 중(unmount)에 보내는 삭제는 false 로 부른다.
  * 이동 중에 revalidate 응답이 오면 어느 화면에 반영될지 정의돼 있지 않다.
@@ -67,7 +66,7 @@ export type DeletePlaceResult = { error?: string };
 export async function deletePlace(
   placeId: string,
   revalidate = true,
-): Promise<DeletePlaceResult> {
+): Promise<ActionResult> {
   const supabase = await createClient();
   // 남의 장소는 RLS(places_own)가 0행으로 걸러낸다. 이미 지워진 장소도 0행이라
   // 같은 결과(삭제된 상태)이므로 에러로 보지 않는다.
@@ -88,12 +87,10 @@ export async function deletePlace(
   return {};
 }
 
-export type UpdateMemoState = { error?: string };
-
 export async function updatePlaceMemo(
   placeId: string,
   memo: string,
-): Promise<UpdateMemoState> {
+): Promise<ActionResult> {
   if (typeof placeId !== "string" || typeof memo !== "string") {
     return { error: "메모를 저장하지 못했습니다." };
   }
@@ -123,12 +120,10 @@ export async function updatePlaceMemo(
   return {};
 }
 
-export type MovePlaceState = { error?: string };
-
 export async function movePlace(
   placeId: string,
   toDayId: string,
-): Promise<MovePlaceState> {
+): Promise<ActionResult> {
   if (typeof placeId !== "string" || typeof toDayId !== "string") {
     return { error: "장소를 옮기지 못했습니다." };
   }
@@ -152,12 +147,10 @@ export async function movePlace(
 // 페이지 조회가 PostgREST max_rows(1000)에서 잘리므로 화면이 이보다 많이 보낼 일은 없다.
 const MAX_REORDER_IDS = 1000;
 
-export type ReorderPlacesResult = { error?: string };
-
 export async function reorderPlaces(
   dayId: string,
   placeIds: string[],
-): Promise<ReorderPlacesResult> {
+): Promise<ActionResult> {
   // Server Action 은 공개 엔드포인트라 인자 형태를 다시 본다.
   // 목록이 그 Day 의 장소와 맞는지는 reorder_places 가 검사한다.
   if (

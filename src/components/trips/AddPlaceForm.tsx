@@ -2,11 +2,12 @@
 
 import { useActionState, useState } from "react";
 
+import { SelectField } from "@/components/ui/SelectField";
 import { addPlace, type AddPlaceState } from "@/lib/actions/places";
 import { CATEGORIES } from "@/lib/places/categories";
-import type { SelectedPlace } from "@/components/places/PlaceSearch";
-
-export type DayOption = { id: string; dayNumber: number; date: string };
+import type { SelectedPlace } from "@/lib/places/types";
+import { formatDate } from "@/lib/trips/format";
+import type { Day } from "@/lib/trips/types";
 
 export function AddPlaceForm({
   tripId,
@@ -17,7 +18,7 @@ export function AddPlaceForm({
   onCancel,
 }: {
   tripId: string;
-  days: DayOption[];
+  days: Pick<Day, "id" | "dayNumber" | "date">[];
   defaultDayId: string;
   place: SelectedPlace;
   onSaved: (dayId: string, placeId: string) => void;
@@ -75,33 +76,18 @@ export function AddPlaceForm({
         <label className="text-[12.5px] font-semibold text-ink" htmlFor="day">
           어느 날
         </label>
-        {/* 브라우저 기본 화살표는 위치를 조절할 수 없어 숨기고 직접 그린다. */}
-        <div className="relative">
-          <select
-            id="day"
-            value={dayId}
-            onChange={(e) => setDayId(e.target.value)}
-            className="h-10.5 w-full appearance-none rounded-control border border-control-line bg-surface pr-10 pl-3 text-[14px] text-ink outline-none focus:border-ink"
-          >
-            {days.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.dayNumber}일차 · {d.date.replaceAll("-", ".")}
-              </option>
-            ))}
-          </select>
-          <svg
-            aria-hidden
-            viewBox="0 0 16 16"
-            className="pointer-events-none absolute top-1/2 right-3.5 size-3.5 -translate-y-1/2 text-ink-soft"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m4 6 4 4 4-4" />
-          </svg>
-        </div>
+        <SelectField
+          id="day"
+          value={dayId}
+          onChange={(e) => setDayId(e.target.value)}
+          className="h-10.5"
+        >
+          {days.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.dayNumber}일차 · {formatDate(d.date)}
+            </option>
+          ))}
+        </SelectField>
       </div>
 
       {state.error ? (

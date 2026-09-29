@@ -31,16 +31,19 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import type { EditorDay, ShownPlace } from "@/components/itinerary/TripEditor";
+import { ChevronUp } from "@/components/ui/icons";
+import { SelectField } from "@/components/ui/SelectField";
+import { movePlace, updatePlaceMemo } from "@/lib/actions/places";
+import type { ActionResult } from "@/lib/actions/types";
 import {
-  movePlace,
-  updatePlaceMemo,
-  type MovePlaceState,
-  type UpdateMemoState,
-} from "@/lib/actions/places";
-import { CATEGORIES, categoryLabel } from "@/lib/places/categories";
+  CATEGORIES,
+  categoryLabel,
+  findCategory,
+} from "@/lib/places/categories";
 import { MAX_PLACE_MEMO } from "@/lib/places/limits";
 import { formatDayDate } from "@/lib/trips/format";
+import type { Day, ShownPlace } from "@/lib/trips/types";
+import { isDesktop } from "@/lib/ui/breakpoints";
 
 const SCREEN_READER_INSTRUCTIONS = {
   draggable:
@@ -68,8 +71,8 @@ export function ItineraryPanel({
   onReorderPlaces,
   onMovedPlace,
 }: {
-  days: EditorDay[];
-  activeDay: EditorDay;
+  days: Day[];
+  activeDay: Day;
   /** activeDay 에서 카테고리 필터를 거친 장소. 목록·드래그는 이것만 다룬다. */
   shownPlaces: ShownPlace[];
   offCategories: string[];
@@ -281,7 +284,6 @@ export function ItineraryPanel({
 
 const SWIPE_REVEAL = 72;
 const SWIPE_SLOP = 6;
-const DESKTOP_QUERY = "(min-width: 64rem)";
 
 /**
  * 누르면 제자리에서 펼쳐져 상세를 보여준다(데스크톱 3d, 모바일 3h).
@@ -302,7 +304,7 @@ function PlaceCard({
   onDelete,
 }: {
   place: ShownPlace;
-  days: EditorDay[];
+  days: Day[];
   currentDayId: string;
   onMoved: (dayId: string, placeName: string) => void;
   expanded: boolean;
@@ -346,7 +348,7 @@ function PlaceCard({
     }
   }, [expanded]);
 
-  const cat = CATEGORIES.find((c) => c.value === place.category);
+  const cat = findCategory(place.category);
   const tint = cat?.tint ?? "bg-lodging-tint";
   const deep = cat?.deep ?? "text-lodging-deep";
   const dot = cat?.dot ?? "bg-lodging";
@@ -362,12 +364,7 @@ function PlaceCard({
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (
-      expanded ||
-      e.pointerType === "mouse" ||
-      window.matchMedia(DESKTOP_QUERY).matches
-    )
-      return;
+    if (expanded || e.pointerType === "mouse" || isDesktop()) return;
     gestureRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -486,18 +483,7 @@ function PlaceCard({
               <span aria-hidden className="hidden lg:inline">
                 닫기
               </span>
-              <svg
-                aria-hidden
-                viewBox="0 0 16 16"
-                className="size-3.5 lg:size-3"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m4 10 4-4 4 4" />
-              </svg>
+              <ChevronUp className="size-3.5 lg:size-3" />
             </button>
           ) : (
             <>
@@ -563,7 +549,7 @@ function PlaceDetail({
   onDelete,
 }: {
   place: ShownPlace;
-  days: EditorDay[];
+  days: Day[];
   currentDayId: string;
   onMoved: (dayId: string, placeName: string) => void;
   onDelete: () => void;
@@ -672,19 +658,19 @@ function MemoForm({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState(initialMemo);
-  const [state, formAction, pending] = useActionState<
-    UpdateMemoState,
-    FormData
-  >(async (_prev, formData) => {
-    const result = await updatePlaceMemo(
-      placeId,
-      String(formData.get("memo") ?? ""),
-    );
-    // await 뒤의 업데이트를 transition 에 넣어야 revalidate 된 새 메모와 함께 반영된다.
-    // 밖에서 닫으면 편집창이 먼저 닫히고 옛 메모가 잠깐 보인다.
-    if (!result.error) startTransition(onClose);
-    return result;
-  }, {});
+  const [state, formAction, pending] = useActionState<ActionResult, FormData>(
+    async (_prev, formData) => {
+      const result = await updatePlaceMemo(
+        placeId,
+        String(formData.get("memo") ?? ""),
+      );
+      // await 뒤의 업데이트를 transition 에 넣어야 revalidate 된 새 메모와 함께 반영된다.
+      // 밖에서 닫으면 편집창이 먼저 닫히고 옛 메모가 잠깐 보인다.
+      if (!result.error) startTransition(onClose);
+      return result;
+    },
+    {},
+  );
   const memoId = useId();
 
   return (
@@ -740,7 +726,7 @@ function MoveForm({
   onClose,
 }: {
   placeId: string;
-  days: EditorDay[];
+  days: Day[];
   currentDayId: string;
   onMoved: (dayId: string) => void;
   onClose: () => void;
@@ -751,7 +737,7 @@ function MoveForm({
   const [toDayId, setToDayId] = useState(
     days[currentIndex + 1]?.id ?? targets[0]?.id ?? "",
   );
-  const [state, formAction, pending] = useActionState<MovePlaceState, FormData>(
+  const [state, formAction, pending] = useActionState<ActionResult, FormData>(
     async () => {
       const result = await movePlace(placeId, toDayId);
       // 탭 이동을 revalidate 된 새 목록과 같은 transition 에 넣는다.
@@ -773,34 +759,20 @@ function MoveForm({
       <label htmlFor={selectId} className="text-[12.5px] text-ink-mute">
         옮길 일차
       </label>
-      <div className="relative">
-        <select
-          id={selectId}
-          value={toDayId}
-          onChange={(e) => setToDayId(e.target.value)}
-          disabled={pending}
-          autoFocus
-          className="h-11 w-full appearance-none rounded-control border border-control-line bg-surface pr-10 pl-3 text-[14px] text-ink outline-none focus:border-ink lg:h-10"
-        >
-          {targets.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.dayNumber}일차 · {formatDayDate(d.date)}
-            </option>
-          ))}
-        </select>
-        <svg
-          aria-hidden
-          viewBox="0 0 16 16"
-          className="pointer-events-none absolute top-1/2 right-3.5 size-3.5 -translate-y-1/2 text-ink-soft"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m4 6 4 4 4-4" />
-        </svg>
-      </div>
+      <SelectField
+        id={selectId}
+        value={toDayId}
+        onChange={(e) => setToDayId(e.target.value)}
+        disabled={pending}
+        autoFocus
+        className="h-11 lg:h-10"
+      >
+        {targets.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.dayNumber}일차 · {formatDayDate(d.date)}
+          </option>
+        ))}
+      </SelectField>
       {state.error ? (
         <p role="alert" className="text-[12.5px] text-food-deep">
           {state.error}

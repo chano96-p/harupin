@@ -3,15 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import type { ActionResult } from "@/lib/actions/types";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRIP_DAYS, MAX_TRIP_TITLE } from "@/lib/trips/limits";
 
-export type CreateTripState = { error?: string };
-
 export async function createTrip(
-  _prev: CreateTripState,
+  _prev: ActionResult,
   formData: FormData,
-): Promise<CreateTripState> {
+): Promise<ActionResult> {
   const title = String(formData.get("title") ?? "").trim();
   const startDate = String(formData.get("startDate") ?? "");
   const endDate = String(formData.get("endDate") ?? "");

@@ -1,15 +1,6 @@
+import { CATEGORIES } from "@/lib/places/categories";
 import { createClient } from "@/lib/supabase/server";
-
-export type TripSummary = {
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string;
-  placeCount: number;
-  categories: string[];
-};
-
-const CATEGORY_ORDER = ["food", "sight", "activity", "lodging"];
+import type { TripSummary } from "@/lib/trips/types";
 
 type ListTripsRow = {
   id: string;
@@ -34,6 +25,8 @@ export async function listTrips(): Promise<TripSummary[]> {
     startDate: row.start_date,
     endDate: row.end_date,
     placeCount: Number(row.place_count),
-    categories: CATEGORY_ORDER.filter((c) => row.categories.includes(c)),
+    categories: CATEGORIES.map((c) => c.value).filter((c) =>
+      row.categories.includes(c),
+    ),
   }));
 }

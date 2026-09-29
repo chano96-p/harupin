@@ -41,6 +41,12 @@ export function isCategory(value: string): value is CategoryValue {
   return VALUES.includes(value);
 }
 
+export type Category = (typeof CATEGORIES)[number];
+
+export function findCategory(value: string): Category | undefined {
+  return CATEGORIES.find((c) => c.value === value);
+}
+
 export function categoryLabel(value: string): string {
-  return CATEGORIES.find((c) => c.value === value)?.label ?? value;
+  return findCategory(value)?.label ?? value;
 }

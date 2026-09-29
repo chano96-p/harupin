@@ -5,58 +5,21 @@ import { env } from "@/lib/env";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 
 import { HtmlMarker } from "@/components/map/HtmlMarker";
-import { CATEGORIES } from "@/lib/places/categories";
+import {
+  DEFAULT_CENTER,
+  DEFAULT_ZOOM,
+  DESATURATED_STYLES,
+  MOBILE_SHEET_RATIO,
+  SELECTED_ZOOM,
+} from "@/lib/map/config";
+import type { LatLng, MapPin } from "@/lib/map/types";
+import { findCategory } from "@/lib/places/categories";
+import { isDesktop } from "@/lib/ui/breakpoints";
 
 // next/dynamic + ssr:false 를 쓰지 않는다.
 //   1) ssr:false 는 Server Component 에서 금지돼 있다.
 //   2) 감싸도 이득이 없다. 지도는 이 화면의 주 콘텐츠라 늦게 불러올수록 손해다.
 // APIProvider 가 스크립트를 클라이언트에서만 주입하므로 'use client' 만으로 충분하다.
-
-// 서울시청. 핀이 있으면 FitPins 가 바로 옮긴다.
-const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 };
-const DEFAULT_ZOOM = 12;
-const SELECTED_ZOOM = 15;
-
-// 모바일은 바텀시트(ItineraryPanel 의 h-[40%])가 지도 아래쪽을 덮는다.
-// 핀이 시트 뒤로 숨지 않게 그만큼 비워두고 맞춘다.
-const DESKTOP_QUERY = "(min-width: 64rem)";
-const MOBILE_SHEET_RATIO = 0.4;
-
-// mapId가 없을 때만 쓰는 임시 스타일. 채도를 낮추고 POI 라벨 밀도를 줄여 카테고리 색 핀이 주인공이 되게 한다.
-// mapId를 지정하면 Google 이 이 배열을 무시하고 콘솔 경고를 띄우므로 함께 쓰지 않는다.
-const DESATURATED_STYLES = [
-  { elementType: "geometry", stylers: [{ saturation: -45 }] },
-  {
-    featureType: "poi",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-  { featureType: "poi.business", stylers: [{ visibility: "off" }] },
-  {
-    featureType: "poi.park",
-    elementType: "labels.text",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "road",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "transit",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-];
-
-export type LatLng = { lat: number; lng: number };
-export type MapPin = LatLng & {
-  id: string;
-  name: string;
-  category: string;
-  /** 방문 순번. 필터로 일부 핀이 빠져도 번호는 그대로다. */
-  order: number;
-};
 
 export function MapPanel({
   pins,
@@ -122,7 +85,7 @@ function NumberedPin({
   focused: boolean;
   dimmed: boolean;
 }) {
-  const dot = CATEGORIES.find((c) => c.value === category)?.dot ?? "bg-lodging";
+  const dot = findCategory(category)?.dot ?? "bg-lodging";
 
   if (focused) {
     // 선택 핀은 다른 핀 위에 그린다. 컨테이너가 쌓임 맥락을 만들지 않아 z-10 이 핀끼리 비교된다.
@@ -161,10 +124,6 @@ function SelectedPin() {
   return (
     <div className="absolute top-0 left-0 size-4.5 -translate-x-1/2 -translate-y-1/2 rounded-pill border-[3px] border-surface bg-ink shadow-[0_1px_4px_rgb(31_31_29/0.3)]" />
   );
-}
-
-function isDesktop() {
-  return window.matchMedia(DESKTOP_QUERY).matches;
 }
 
 function mobileSheetHeight(map: google.maps.Map) {

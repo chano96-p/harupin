@@ -7,8 +7,15 @@ export function formatDayDate(date: string): string {
   return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 (${WEEKDAYS[d.getUTCDay()]})`;
 }
 
+/** "2026-09-14" → "2026.09.14" */
+export function formatDate(date: string): string {
+  return date.replaceAll("-", ".");
+}
+
+// 종료일의 연도는 시작일과 같을 때만 생략한다. 항상 자르면
+// "2026.12.30 – 01.02" 처럼 이듬해인지 알 수 없게 된다.
 export function formatTripRange(start: string, end: string): string {
   const sameYear = start.slice(0, 4) === end.slice(0, 4);
-  const endText = sameYear ? end.slice(5) : end;
-  return `${start.replaceAll("-", ".")} – ${endText.replaceAll("-", ".")}`;
+  const endText = formatDate(end);
+  return `${formatDate(start)} – ${sameYear ? endText.slice(5) : endText}`;
 }
