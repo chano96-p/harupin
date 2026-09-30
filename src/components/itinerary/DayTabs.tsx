@@ -12,7 +12,7 @@ export function DayTabs({
   onSelect: (dayId: string) => void;
 }) {
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 scrollbar-none lg:px-6">
+    <div className="flex touch-pan-x gap-2 overflow-x-auto px-4 scrollbar-none lg:touch-auto lg:px-6">
       {days.map((d) => {
         const active = d.id === activeDayId;
         return (

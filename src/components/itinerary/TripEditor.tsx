@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 
+import { useElementHeight } from "@/components/itinerary/hooks/useElementHeight";
 import { usePendingDelete } from "@/components/itinerary/hooks/usePendingDelete";
 import { useOptimisticOrder } from "@/components/itinerary/hooks/useOptimisticOrder";
 import { ItineraryPanel } from "@/components/itinerary/ItineraryPanel";
@@ -11,6 +12,7 @@ import { MapPanel } from "@/components/map/MapPanel";
 import { Toast } from "@/components/ui/Toast";
 import type { SelectedPlace } from "@/lib/places/types";
 import type { Day, ShownPlace, Trip } from "@/lib/trips/types";
+import type { SheetSnap } from "@/lib/ui/sheet";
 
 /**
  * 일정 편집 화면. 시안 1a(데스크톱 스플릿 뷰) / 1b(모바일 지도 + 바텀시트).
@@ -22,13 +24,16 @@ import type { Day, ShownPlace, Trip } from "@/lib/trips/types";
 export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [selected, setSelected] = useState<SelectedPlace | null>(null);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>("half");
   // 상세를 펼친 장소. 목록에 없으면(다른 Day, 삭제 대기) focusedId 가 null 이 된다.
   // 되돌리기로 다시 나타나면 펼친 상태로 돌아온다.
   const [focusedPlaceId, setFocusedPlaceId] = useState<string | null>(null);
   // 꺼둔 카테고리(시안 1a 필터 칩). Day 를 바꿔도 유지한다.
   const [offCategories, setOffCategories] = useState<string[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
+  // 모바일 시트 머리 높이. peek 가 이보다 작아지지 않게 하고, 지도도 그만큼 비운다.
+  const sheetHeadRef = useRef<HTMLDivElement>(null);
+  const sheetHeadHeight = useElementHeight(sheetHeadRef);
   // 저장은 폼이 사라진 뒤(다른 장소 선택)에도 끝까지 진행된다.
   // 늦게 끝난 저장이 그사이 고른 장소와 보던 탭을 덮지 않도록, 완료 시점의 선택과 비교한다.
   const selectedIdRef = useRef<string | null>(null);
@@ -73,10 +78,12 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
   function selectPlace(place: SelectedPlace | null) {
     selectedIdRef.current = place?.placeId ?? null;
     setSelected(place);
+    // 고른 장소의 핀과 추가 폼이 가리지 않게 모바일 시트를 접는다.
+    if (place) setSheetSnap("peek");
   }
 
   function focusSearch() {
-    setSheetExpanded(false);
+    setSheetSnap("peek");
     searchRef.current?.focus();
   }
 
@@ -95,6 +102,7 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
             pins={shownPlaces}
             selected={selected}
             focusedId={focusedId}
+            sheet={{ snap: sheetSnap, minHeight: sheetHeadHeight }}
           />
           <SearchOverlay
             tripId={trip.id}
@@ -127,8 +135,10 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
             }}
             focusedId={focusedId}
             onFocusPlace={setFocusedPlaceId}
-            expanded={sheetExpanded}
-            onToggleExpanded={() => setSheetExpanded((v) => !v)}
+            snap={sheetSnap}
+            onSnapChange={setSheetSnap}
+            headRef={sheetHeadRef}
+            headHeight={sheetHeadHeight}
             onAddPlace={focusSearch}
             onDeletePlace={requestDelete}
             onMovedPlace={(dayId, placeName) => {

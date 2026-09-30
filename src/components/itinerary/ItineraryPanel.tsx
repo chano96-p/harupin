@@ -1,17 +1,21 @@
 "use client";
 
+import type { Ref } from "react";
+
 import { CategoryFilter } from "@/components/itinerary/CategoryFilter";
 import { DayTabs } from "@/components/itinerary/DayTabs";
 import { EmptyDay, FilteredEmpty } from "@/components/itinerary/EmptyStates";
+import { useSheetDrag } from "@/components/itinerary/hooks/useSheetDrag";
 import { PlaceList } from "@/components/itinerary/PlaceList";
 import { Plus } from "@/components/ui/icons";
 import { formatDayDate } from "@/lib/trips/format";
 import type { Day, ShownPlace } from "@/lib/trips/types";
+import type { SheetSnap } from "@/lib/ui/sheet";
 
 /**
  * Day 탭 + 그 Day 의 장소 리스트.
  * 모바일은 지도 위 바텀시트(1b), lg 부터는 좌측 고정 패널(1a).
- * 접힌 시트 높이(h-[40%])는 lib/map/config 의 MOBILE_SHEET_RATIO 와 같아야 한다.
+ * 모바일 시트 높이는 끌어서 바꾸고, 놓으면 lib/ui/sheet 의 단계 중 하나에 붙는다.
  */
 export function ItineraryPanel({
   days,
@@ -23,8 +27,10 @@ export function ItineraryPanel({
   onSelectDay,
   focusedId,
   onFocusPlace,
-  expanded,
-  onToggleExpanded,
+  snap,
+  onSnapChange,
+  headRef,
+  headHeight,
   onAddPlace,
   onDeletePlace,
   onReorderPlaces,
@@ -40,8 +46,11 @@ export function ItineraryPanel({
   onSelectDay: (dayId: string) => void;
   focusedId: string | null;
   onFocusPlace: (placeId: string | null) => void;
-  expanded: boolean;
-  onToggleExpanded: () => void;
+  snap: SheetSnap;
+  onSnapChange: (snap: SheetSnap) => void;
+  /** 시트 머리. TripEditor 가 높이를 재서 headHeight 로 돌려준다(peek 하한·지도 여백). */
+  headRef: Ref<HTMLDivElement>;
+  headHeight: number;
   onAddPlace: () => void;
   onDeletePlace: (placeId: string) => void;
   onReorderPlaces: (placeIds: string[]) => void;
@@ -49,45 +58,56 @@ export function ItineraryPanel({
   onMovedPlace: (dayId: string, placeName: string) => void;
 }) {
   const filtering = offCategories.length > 0;
+  const { sheetRef, sheetHeight, dragging, toggle, dragHandlers } =
+    useSheetDrag({ snap, onSnapChange, minHeight: headHeight });
 
   return (
     <section
-      className={`absolute inset-x-0 bottom-0 flex flex-col rounded-t-[22px] border-t border-line bg-canvas shadow-[0_-8px_28px_-6px_rgb(49_37_28/0.12)] transition-[height] duration-200 ${expanded ? "h-[85%]" : "h-[40%]"} lg:static lg:h-auto lg:w-[42%] lg:max-w-130 lg:flex-none lg:rounded-none lg:border-t-0 lg:border-r lg:shadow-none lg:transition-none`}
+      ref={sheetRef}
+      style={{ "--sheet-h": sheetHeight } as React.CSSProperties}
+      className={`absolute inset-x-0 bottom-0 flex h-(--sheet-h) flex-col overflow-hidden rounded-t-[22px] border-t border-line bg-canvas shadow-[0_-8px_28px_-6px_rgb(49_37_28/0.12)] ${dragging ? "" : "transition-[height] duration-200"} lg:static lg:h-auto lg:overflow-visible lg:w-[42%] lg:max-w-130 lg:flex-none lg:rounded-none lg:border-t-0 lg:border-r lg:shadow-none lg:transition-none`}
     >
-      <button
-        type="button"
-        onClick={onToggleExpanded}
-        aria-expanded={expanded}
-        aria-label={expanded ? "목록 접기" : "목록 펼치기"}
-        className="flex h-6 flex-none items-center justify-center lg:hidden"
+      {/* 시트 머리(손잡이·탭·필터)를 세로로 끌면 시트 높이가 바뀐다. 가로 스크롤은 그대로 둔다. */}
+      <div
+        ref={headRef}
+        {...dragHandlers}
+        className="flex flex-none touch-pan-x flex-col lg:touch-auto"
       >
-        <span className="h-1 w-10 rounded-pill bg-line-strong" />
-      </button>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={snap === "full"}
+          aria-label={snap === "full" ? "목록 줄이기" : "목록 펼치기"}
+          className="flex h-7 flex-none cursor-grab items-center justify-center active:cursor-grabbing lg:hidden"
+        >
+          <span className="h-1 w-10 rounded-pill bg-line-strong" />
+        </button>
 
-      <div className="flex flex-none flex-col gap-4 pb-4 lg:pt-6">
-        <DayTabs
-          days={days}
-          activeDayId={activeDay.id}
-          onSelect={onSelectDay}
-        />
+        <div className="flex flex-none flex-col gap-4 pb-4 lg:pt-6">
+          <DayTabs
+            days={days}
+            activeDayId={activeDay.id}
+            onSelect={onSelectDay}
+          />
 
-        <div className="hidden items-baseline gap-2 px-6 lg:flex">
-          <span className="text-[18px] font-bold tracking-[-0.02em] text-ink">
-            {formatDayDate(activeDay.date)}
-          </span>
-          <span className="text-[12.5px] text-ink-soft">
-            {filtering
-              ? `${shownPlaces.length} / ${activeDay.places.length}곳`
-              : `${activeDay.places.length}곳`}
-          </span>
+          <div className="hidden items-baseline gap-2 px-6 lg:flex">
+            <span className="text-[18px] font-bold tracking-[-0.02em] text-ink">
+              {formatDayDate(activeDay.date)}
+            </span>
+            <span className="text-[12.5px] text-ink-soft">
+              {filtering
+                ? `${shownPlaces.length} / ${activeDay.places.length}곳`
+                : `${activeDay.places.length}곳`}
+            </span>
+          </div>
+
+          <CategoryFilter
+            offCategories={offCategories}
+            hiddenCount={activeDay.places.length - shownPlaces.length}
+            onToggle={onToggleCategory}
+            onClear={onClearFilter}
+          />
         </div>
-
-        <CategoryFilter
-          offCategories={offCategories}
-          hiddenCount={activeDay.places.length - shownPlaces.length}
-          onToggle={onToggleCategory}
-          onClear={onClearFilter}
-        />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 pb-6 lg:px-6 lg:pt-1 lg:pb-6">

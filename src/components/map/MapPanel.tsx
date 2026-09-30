@@ -12,6 +12,7 @@ import {
   DESATURATED_STYLES,
 } from "@/lib/map/config";
 import type { LatLng, MapPin } from "@/lib/map/types";
+import type { SheetState } from "@/lib/ui/sheet";
 
 // next/dynamic + ssr:false 를 쓰지 않는다.
 //   1) ssr:false 는 Server Component 에서 금지돼 있다.
@@ -22,11 +23,14 @@ export function MapPanel({
   pins,
   selected,
   focusedId,
+  sheet,
 }: {
   pins: MapPin[];
   selected: LatLng | null;
   /** 상세를 펼친 장소(시안 3d). 이 핀만 확대하고 나머지는 흐리게 한다. */
   focusedId: string | null;
+  /** 모바일 시트 상태. 핀을 맞출 때 시트가 덮는 만큼 비운다. */
+  sheet: SheetState;
 }) {
   const focusedPin = pins.find((p) => p.id === focusedId) ?? null;
 
@@ -59,9 +63,11 @@ export function MapPanel({
           </HtmlMarker>
         ) : null}
 
-        <FitPins pins={pins} />
-        {selected ? <PanTo point={selected} zoomIn /> : null}
-        {focusedPin ? <PanTo point={focusedPin} zoomIn={false} /> : null}
+        <FitPins pins={pins} sheet={sheet} />
+        {selected ? <PanTo point={selected} zoomIn sheet={sheet} /> : null}
+        {focusedPin ? (
+          <PanTo point={focusedPin} zoomIn={false} sheet={sheet} />
+        ) : null}
       </Map>
     </APIProvider>
   );

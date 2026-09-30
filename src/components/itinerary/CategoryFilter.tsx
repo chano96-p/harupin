@@ -22,7 +22,7 @@ export function CategoryFilter({
     <div
       role="group"
       aria-label="카테고리 필터"
-      className="flex gap-2 overflow-x-auto px-4 scrollbar-none lg:px-6"
+      className="flex touch-pan-x gap-2 overflow-x-auto px-4 scrollbar-none lg:touch-auto lg:px-6"
     >
       <button
         type="button"
