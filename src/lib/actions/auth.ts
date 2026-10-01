@@ -31,3 +31,12 @@ export async function signInWithGoogle() {
 
   redirect(data.url);
 }
+
+// scope 기본값은 "global" 이라 같은 계정의 다른 기기까지 모두 끊긴다.
+// 메뉴의 "로그아웃" 은 이 기기만 뜻하므로 local 로 둔다.
+export async function signOut() {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+  if (error) console.error("signOut 실패", error);
+  redirect("/login");
+}
