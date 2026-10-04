@@ -1,11 +1,17 @@
 import Link from "next/link";
 
-import { ArrowLeft, MapPin } from "@/components/ui/icons";
+import { ArrowLeft, MapPin, Settings } from "@/components/ui/icons";
 import { formatTripRange } from "@/lib/trips/format";
 import type { Trip } from "@/lib/trips/types";
 
 /** 데스크톱 헤더(1a). 모바일은 지도 전면이라 헤더가 없고 제목은 sr-only 로만 둔다. */
-export function TripHeader({ trip }: { trip: Trip }) {
+export function TripHeader({
+  trip,
+  onOpenSettings,
+}: {
+  trip: Trip;
+  onOpenSettings: () => void;
+}) {
   return (
     <header className="hidden h-18 flex-none items-center gap-3 border-b border-line bg-surface px-6 lg:flex">
       <Link
@@ -32,6 +38,14 @@ export function TripHeader({ trip }: { trip: Trip }) {
           {formatTripRange(trip.startDate, trip.endDate)}
         </p>
       </div>
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        className="ml-auto flex h-10 flex-none items-center gap-2 rounded-control border border-line px-3.5 text-[13.5px] font-bold text-ink transition-colors hover:bg-surface-hover"
+      >
+        <Settings className="size-4" />
+        설정
+      </button>
     </header>
   );
 }

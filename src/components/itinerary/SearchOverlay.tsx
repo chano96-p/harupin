@@ -3,7 +3,7 @@ import type { Ref } from "react";
 
 import { AddPlaceForm } from "@/components/itinerary/AddPlaceForm";
 import { PlaceSearch } from "@/components/places/PlaceSearch";
-import { ArrowLeft } from "@/components/ui/icons";
+import { ArrowLeft, Settings } from "@/components/ui/icons";
 import type { SelectedPlace } from "@/lib/places/types";
 import type { Day } from "@/lib/trips/types";
 
@@ -20,6 +20,7 @@ export function SearchOverlay({
   searchRef,
   onSelect,
   onSaved,
+  onOpenSettings,
 }: {
   tripId: string;
   days: Day[];
@@ -28,6 +29,8 @@ export function SearchOverlay({
   searchRef: Ref<HTMLInputElement>;
   onSelect: (place: SelectedPlace | null) => void;
   onSaved: (dayId: string, placeId: string) => void;
+  /** 모바일 여행 설정 버튼. 데스크톱은 TripHeader 에 있다. */
+  onOpenSettings: () => void;
 }) {
   return (
     <div className="pointer-events-none absolute inset-x-3.5 top-3.5 z-10 flex flex-col gap-2 lg:inset-x-6 lg:top-5">
@@ -42,6 +45,14 @@ export function SearchOverlay({
         <div className="pointer-events-auto min-w-0 flex-1">
           <PlaceSearch inputRef={searchRef} onSelect={onSelect} />
         </div>
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          aria-label="여행 설정"
+          className="pointer-events-auto grid size-12 flex-none place-items-center rounded-pill border border-line bg-surface text-ink shadow-overlay lg:hidden"
+        >
+          <Settings className="size-5" />
+        </button>
       </div>
 
       {selected && activeDayId ? (

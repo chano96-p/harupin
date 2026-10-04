@@ -1,61 +1,30 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  closeDialog,
+  Dialog,
+  FIELD_CLASS,
+  LABEL_CLASS,
+} from "@/components/ui/Dialog";
 import { createTrip } from "@/lib/actions/trips";
 import type { ActionResult } from "@/lib/actions/types";
+import { countDays, shiftDate } from "@/lib/trips/dates";
 import { MAX_TRIP_DAYS, MAX_TRIP_TITLE } from "@/lib/trips/limits";
 
-const FIELD =
-  "h-12 w-full rounded-control border border-control-line bg-surface px-3.5 text-[15px] text-ink outline-none placeholder:text-ink-mute focus:border-ink lg:px-4 lg:text-[14px]";
-const LABEL = "text-[13px] font-bold text-ink";
-const DAY_MS = 86_400_000;
-
-function shiftDate(iso: string, days: number) {
-  return new Date(new Date(iso).getTime() + days * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-}
-
 export function NewTripDialog({ open }: { open: boolean }) {
-  const ref = useRef<HTMLDialogElement>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (open && !el.open) el.showModal();
-    if (!open && el.open) el.close();
-  }, [open]);
-
-  // 백드롭 클릭으로 닫기.
-  function closeOnBackdrop(e: React.MouseEvent<HTMLDialogElement>) {
-    const el = ref.current;
-    if (!el || e.target !== el) return;
-    const r = el.getBoundingClientRect();
-    const inside =
-      e.clientX >= r.left &&
-      e.clientX <= r.right &&
-      e.clientY >= r.top &&
-      e.clientY <= r.bottom;
-    if (!inside) el.close();
-  }
-
   return (
-    <dialog
-      ref={ref}
-      onClick={closeOnBackdrop}
-      onClose={() => router.replace("/", { scroll: false })}
-      className="m-0 mt-auto w-full max-w-none rounded-t-panel bg-surface p-6 text-ink shadow-pop backdrop:bg-[rgb(23_26_24/0.36)] lg:m-auto lg:w-110 lg:rounded-panel lg:p-7"
-    >
-      {/* 열릴 때마다 새로 마운트한다. 이전 제출의 에러와 입력값이 남지 않는다. */}
-      {open ? <NewTripForm onCancel={() => ref.current?.close()} /> : null}
-    </dialog>
+    <Dialog open={open} onClose={() => router.replace("/", { scroll: false })}>
+      <NewTripForm />
+    </Dialog>
   );
 }
 
-function NewTripForm({ onCancel }: { onCancel: () => void }) {
+function NewTripForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<ActionResult, FormData>(
     createTrip,
@@ -64,12 +33,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
 
-  const days =
-    start && end && end >= start
-      ? Math.round(
-          (new Date(end).getTime() - new Date(start).getTime()) / DAY_MS,
-        ) + 1
-      : 0;
+  const days = start && end && end >= start ? countDays(start, end) : 0;
 
   function resetAll() {
     formRef.current?.reset();
@@ -82,7 +46,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
       <h2 className="text-[20px] font-bold tracking-[-0.02em]">새 여행</h2>
 
       <div className="flex flex-col gap-1.75">
-        <label className={LABEL} htmlFor="title">
+        <label className={LABEL_CLASS} htmlFor="title">
           여행 제목
         </label>
         <input
@@ -91,12 +55,12 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
           required
           maxLength={MAX_TRIP_TITLE}
           placeholder="예: 제주 봄 3박 4일"
-          className={FIELD}
+          className={FIELD_CLASS}
         />
       </div>
 
       <div className="flex flex-col gap-1.75">
-        <span className={LABEL}>기간</span>
+        <span className={LABEL_CLASS}>기간</span>
         <div className="flex gap-2.5 lg:gap-3">
           <input
             type="date"
@@ -105,7 +69,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
             aria-label="시작일"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className={FIELD}
+            className={FIELD_CLASS}
           />
           <input
             type="date"
@@ -116,7 +80,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
             max={start ? shiftDate(start, MAX_TRIP_DAYS - 1) : undefined}
             value={end}
             onChange={(e) => setEnd(e.target.value)}
-            className={FIELD}
+            className={FIELD_CLASS}
           />
         </div>
       </div>
@@ -143,7 +107,7 @@ function NewTripForm({ onCancel }: { onCancel: () => void }) {
         </button>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={closeDialog}
           className="h-12 rounded-control px-3.5 text-[14.5px] font-bold text-ink transition-colors hover:bg-surface-hover lg:hidden"
         >
           취소

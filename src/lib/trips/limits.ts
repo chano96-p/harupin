@@ -6,3 +6,6 @@ export const MAX_TRIP_DAYS = 366;
 
 /** DB 의 trips_title_length CHECK 및 입력창 maxLength 와 같은 값이어야 한다. */
 export const MAX_TRIP_TITLE = 100;
+
+/** DB 의 trips_region_length CHECK 와 같은 값이어야 한다. */
+export const MAX_TRIP_REGION = 100;

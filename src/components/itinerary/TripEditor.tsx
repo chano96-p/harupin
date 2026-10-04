@@ -8,6 +8,7 @@ import { useOptimisticOrder } from "@/components/itinerary/hooks/useOptimisticOr
 import { ItineraryPanel } from "@/components/itinerary/ItineraryPanel";
 import { SearchOverlay } from "@/components/itinerary/SearchOverlay";
 import { TripHeader } from "@/components/itinerary/TripHeader";
+import { TripSettingsDialog } from "@/components/itinerary/TripSettingsDialog";
 import { MapPanel } from "@/components/map/MapPanel";
 import { Toast } from "@/components/ui/Toast";
 import type { SelectedPlace } from "@/lib/places/types";
@@ -24,6 +25,7 @@ import type { SheetSnap } from "@/lib/ui/sheet";
 export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
   const [selected, setSelected] = useState<SelectedPlace | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>("half");
   // 상세를 펼친 장소. 목록에 없으면(다른 Day, 삭제 대기) focusedId 가 null 이 된다.
   // 되돌리기로 다시 나타나면 펼친 상태로 돌아온다.
@@ -94,7 +96,18 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
       <p role="status" className="sr-only">
         {statusMessage}
       </p>
-      <TripHeader trip={trip} />
+      <TripHeader trip={trip} onOpenSettings={() => setSettingsOpen(true)} />
+      <TripSettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        trip={trip}
+        dayCount={days.length}
+        minDayCount={Math.max(
+          1,
+          ...days.filter((d) => d.places.length > 0).map((d) => d.dayNumber),
+        )}
+        placeCount={days.reduce((n, d) => n + d.places.length, 0)}
+      />
 
       <div className="relative min-h-0 flex-1 lg:flex">
         <div className="absolute inset-0 lg:relative lg:inset-auto lg:order-2 lg:flex-1">
@@ -110,6 +123,7 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
             activeDayId={activeDay?.id ?? null}
             selected={selected}
             searchRef={searchRef}
+            onOpenSettings={() => setSettingsOpen(true)}
             onSelect={selectPlace}
             // 목록 갱신은 addPlace 의 revalidatePath 가 처리한다.
             // 저장한 Day 로 탭을 옮겨야 방금 추가한 핀이 보인다.
