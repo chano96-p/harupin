@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { MemoForm } from "@/components/itinerary/MemoForm";
 import { MoveForm } from "@/components/itinerary/MoveForm";
+import { LinkifiedText } from "@/components/ui/LinkifiedText";
 import type { Day, ShownPlace } from "@/lib/trips/types";
 
 /**
@@ -74,7 +75,7 @@ export function PlaceDetail({
         <dd
           className={`min-w-0 flex-1 text-[13px] leading-normal wrap-break-word whitespace-pre-wrap ${place.memo ? "text-ink" : "text-ink-mute"}`}
         >
-          {place.memo ?? "메모 없음"}
+          {place.memo ? <LinkifiedText text={place.memo} /> : "메모 없음"}
         </dd>
       </dl>
       <div className="flex items-center gap-2 lg:gap-2.25">
