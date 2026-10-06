@@ -1,9 +1,14 @@
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 
 export type CurrentUser = { name: string; email: string };
 
-/** 헤더 표시용. 이름은 구글 프로필 이름, 없으면 이메일 앞부분. */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+/**
+ * 헤더·홈 인사용. 이름은 구글 프로필 이름, 없으면 이메일 앞부분.
+ * 한 요청에서 헤더와 페이지가 함께 부르므로 cache 로 한 번만 조회한다.
+ */
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,4 +23,4 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     email.split("@")[0] ||
     "사용자";
   return { name, email };
-}
+});

@@ -14,3 +14,13 @@ export function countDays(start: string, end: string): number {
     1
   );
 }
+
+/**
+ * 오늘 날짜("YYYY-MM-DD"). 한국 시간 기준이다 — 서버(Vercel)는 UTC 라
+ * 그대로 쓰면 오전 9시 전까지 하루 전 날짜가 된다.
+ */
+export function todayInSeoul(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date(),
+  );
+}

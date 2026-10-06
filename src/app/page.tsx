@@ -3,53 +3,92 @@ import Link from "next/link";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Plus } from "@/components/ui/icons";
 import { NewTripDialog } from "@/components/trips/NewTripDialog";
+import { StatCards } from "@/components/trips/StatCards";
 import { TripCard } from "@/components/trips/TripCard";
-import { listTrips } from "@/lib/queries/trips";
+import { UpcomingTripCard } from "@/components/trips/UpcomingTripCard";
+import { getTripProgress, listTrips } from "@/lib/queries/trips";
+import { getCurrentUser } from "@/lib/queries/user";
+import { todayInSeoul } from "@/lib/trips/dates";
+import { findNextTrip, summarizeTrips } from "@/lib/trips/summary";
+import type { TripSummary } from "@/lib/trips/types";
 
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ new?: string }>;
 }) {
-  const [trips, params] = await Promise.all([listTrips(), searchParams]);
+  const [trips, user, params] = await Promise.all([
+    listTrips(),
+    getCurrentUser(),
+    searchParams,
+  ]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
       <AppHeader />
 
-      {trips.length === 0 ? <EmptyTrips /> : <TripGrid trips={trips} />}
+      {trips.length === 0 ? (
+        <EmptyTrips />
+      ) : (
+        <TripHome trips={trips} userName={user?.name ?? null} />
+      )}
 
       <NewTripDialog open={params.new !== undefined} />
     </div>
   );
 }
 
-function TripGrid({ trips }: { trips: Awaited<ReturnType<typeof listTrips>> }) {
+async function TripHome({
+  trips,
+  userName,
+}: {
+  trips: TripSummary[];
+  userName: string | null;
+}) {
+  const today = todayInSeoul();
+  const nextTrip = findNextTrip(trips, today);
+  const progress = nextTrip ? await getTripProgress(nextTrip.id) : null;
+
   return (
     <main className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 lg:gap-9 lg:px-12 lg:py-12">
       <div className="flex flex-col gap-2">
         <span className="text-[11.5px] font-bold tracking-[0.12em] text-brand-deep">
           MY JOURNEYS
         </span>
-        <div className="flex items-baseline gap-2.5">
-          <h1 className="text-[26px] font-bold tracking-[-0.02em] text-ink lg:text-[32px]">
-            내 여행
-          </h1>
-          <span className="text-[14px] font-medium text-ink-soft">
-            {trips.length}개
-          </span>
-        </div>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-ink lg:text-[32px]">
+          {userName ? `${userName}님의 여행` : "내 여행"}
+        </h1>
         <p className="text-[14px] text-ink-soft">
           떠날 날을 기다리는 여행부터 오래 간직할 추억까지 한곳에 모았어요.
         </p>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {trips.map((trip) => (
-          <TripCard key={trip.id} trip={trip} />
-        ))}
-        <NewTripTile />
+      <div className="flex flex-col gap-4 lg:max-w-200">
+        <StatCards stats={summarizeTrips(trips, today)} />
+        {nextTrip && progress ? (
+          <UpcomingTripCard trip={nextTrip} progress={progress} today={today} />
+        ) : null}
       </div>
+
+      <section aria-labelledby="trip-list" className="flex flex-col gap-4">
+        <div className="flex items-baseline gap-2">
+          <h2
+            id="trip-list"
+            className="text-[18px] font-bold tracking-[-0.02em] text-ink lg:text-[20px]"
+          >
+            내 여행
+          </h2>
+          <span className="text-[13px] font-medium text-ink-soft">
+            {trips.length}개
+          </span>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {trips.map((trip) => (
+            <TripCard key={trip.id} trip={trip} />
+          ))}
+          <NewTripTile />
+        </div>
+      </section>
     </main>
   );
 }
