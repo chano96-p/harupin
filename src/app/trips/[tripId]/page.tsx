@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { TripEditor } from "@/components/itinerary/TripEditor";
 import { createClient } from "@/lib/supabase/server";
+import { signCoverUrls } from "@/lib/queries/covers";
 
 export default async function TripPage({
   params,
@@ -18,7 +19,7 @@ export default async function TripPage({
   const { data: trip, error } = await supabase
     .from("trips")
     .select(
-      "id, title, start_date, end_date, region, days(id, day_number, date, places(id, name, category, lat, lng, memo, visit_order))",
+      "id, title, start_date, end_date, region, cover_path, days(id, day_number, date, places(id, name, category, lat, lng, memo, visit_order))",
     )
     .eq("id", tripId)
     .maybeSingle();
@@ -66,6 +67,8 @@ export default async function TripPage({
         })),
     }));
 
+  const covers = await signCoverUrls([trip.cover_path]);
+
   return (
     <TripEditor
       trip={{
@@ -74,6 +77,7 @@ export default async function TripPage({
         startDate: trip.start_date,
         endDate: trip.end_date,
         region: trip.region,
+        coverUrl: (trip.cover_path && covers.get(trip.cover_path)) ?? null,
       }}
       days={days}
     />

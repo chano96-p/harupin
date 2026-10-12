@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import type { ActionResult } from "@/lib/actions/types";
 import { createClient } from "@/lib/supabase/server";
+import { COVER_BUCKET, isCoverPathFor } from "@/lib/trips/cover";
 import { countDays } from "@/lib/trips/dates";
 import {
   MAX_TRIP_DAYS,
@@ -111,13 +112,85 @@ export async function deleteTrip(
     .from("trips")
     .delete()
     .eq("id", tripId)
-    .select("id");
+    .select("id, user_id");
 
   if (error || data.length === 0) {
     if (error) console.error("여행 삭제 실패", { tripId, error });
     return { error: "여행을 삭제하지 못했습니다." };
   }
 
+  // 사진 파일은 FK cascade 대상이 아니다. 현재 커버만 지우면 업로드 도중 실패·두 탭 동시 변경으로
+  // 생긴 파일이 남으므로 여행 폴더를 통째로 비운다. 여행이 지워진 뒤라 실패해도 되돌리지 않는다.
+  const folder = `${data[0].user_id}/${data[0].id}`;
+  const bucket = supabase.storage.from(COVER_BUCKET);
+  const { data: files } = await bucket.list(folder);
+  if (files?.length) {
+    const { error: removeError } = await bucket.remove(
+      files.map((f) => `${folder}/${f.name}`),
+    );
+    if (removeError) {
+      console.error("대표 사진 삭제 실패", { folder, removeError });
+    }
+  }
+
   revalidatePath("/");
   redirect("/");
+}
+
+/**
+ * 대표 사진을 바꾸거나(path) 지운다(null). 파일은 브라우저가 Storage 에 먼저 올린다.
+ * 바꾼 뒤 이전 파일을 지운다 — 남겨두면 버킷에 쓰지 않는 파일이 쌓인다.
+ */
+export async function setTripCover(
+  tripId: string,
+  path: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+  // Server Action 은 직접 호출될 수 있다. 남의 폴더 경로를 걸지 못하게 서버에서 다시 본다
+  // (DB 의 trips_cover_path_format CHECK 가 최종 방어선).
+  if (
+    typeof tripId !== "string" ||
+    (path !== null &&
+      (typeof path !== "string" || !isCoverPathFor(path, user.id, tripId)))
+  ) {
+    return { error: "사진을 저장하지 못했습니다." };
+  }
+
+  const { data: before, error: readError } = await supabase
+    .from("trips")
+    .select("cover_path")
+    .eq("id", tripId)
+    .maybeSingle();
+  if (readError || !before) {
+    if (readError) console.error("대표 사진 조회 실패", { tripId, readError });
+    return { error: "여행을 찾을 수 없습니다." };
+  }
+
+  // 그사이 여행이 지워졌으면 0행이다. 성공으로 넘기면 방금 올린 파일이 고아로 남으므로
+  // 실패로 돌려 호출한 쪽(CoverPicker)이 파일을 지우게 한다.
+  const { data: saved, error } = await supabase
+    .from("trips")
+    .update({ cover_path: path })
+    .eq("id", tripId)
+    .select("id")
+    .maybeSingle();
+  if (error || !saved) {
+    if (error) console.error("대표 사진 저장 실패", { tripId, error });
+    return { error: "사진을 저장하지 못했습니다." };
+  }
+
+  if (before.cover_path && before.cover_path !== path) {
+    const { error: removeError } = await supabase.storage
+      .from(COVER_BUCKET)
+      .remove([before.cover_path]);
+    if (removeError) console.error("이전 대표 사진 삭제 실패", { removeError });
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/trips/${saved.id}`);
+  return {};
 }

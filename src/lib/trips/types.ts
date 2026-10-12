@@ -5,6 +5,8 @@ export type Trip = {
   startDate: string;
   endDate: string;
   region: string | null;
+  /** 대표 사진 공개 주소. 없으면 null */
+  coverUrl: string | null;
 };
 
 export type Day = {
@@ -34,4 +36,5 @@ export type TripSummary = {
   endDate: string;
   placeCount: number;
   categories: string[];
+  coverUrl: string | null;
 };

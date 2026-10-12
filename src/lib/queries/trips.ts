@@ -1,5 +1,6 @@
 import { CATEGORIES } from "@/lib/places/categories";
 import { createClient } from "@/lib/supabase/server";
+import { signCoverUrls } from "@/lib/queries/covers";
 import type { TripSummary } from "@/lib/trips/types";
 
 type ListTripsRow = {
@@ -7,6 +8,7 @@ type ListTripsRow = {
   title: string;
   start_date: string;
   end_date: string;
+  cover_path: string | null;
   place_count: number;
   categories: string[];
 };
@@ -19,8 +21,11 @@ export async function listTrips(): Promise<TripSummary[]> {
   const { data, error } = await supabase.rpc("list_trips");
   if (error) throw error;
 
+  const rows = (data ?? []) as ListTripsRow[];
+  const covers = await signCoverUrls(rows.map((r) => r.cover_path));
+
   // 여행 날짜 최신순(시작일이 늦은 것부터). 정렬 메뉴는 두지 않는다.
-  return ((data ?? []) as ListTripsRow[])
+  return rows
     .map((row) => ({
       id: row.id,
       title: row.title,
@@ -30,6 +35,7 @@ export async function listTrips(): Promise<TripSummary[]> {
       categories: CATEGORIES.map((c) => c.value).filter((c) =>
         row.categories.includes(c),
       ),
+      coverUrl: (row.cover_path && covers.get(row.cover_path)) ?? null,
     }))
     .sort((a, b) => b.startDate.localeCompare(a.startDate));
 }

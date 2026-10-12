@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 
+import { CoverPicker } from "@/components/itinerary/CoverPicker";
 import {
   closeDialog,
   Dialog,
@@ -129,6 +130,8 @@ function EditForm({
     <form action={action} className="flex flex-col gap-4.5">
       <h2 className="text-[20px] font-bold tracking-[-0.02em]">여행 설정</h2>
       <input type="hidden" name="tripId" value={trip.id} />
+
+      <CoverPicker tripId={trip.id} coverUrl={trip.coverUrl} />
 
       <div className="flex flex-col gap-1.75">
         <label className={LABEL_CLASS} htmlFor="trip-title">
