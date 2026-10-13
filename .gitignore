@@ -49,3 +49,6 @@ supabase/.temp
 # 없으면 pnpm db:deploy 가 받는 곳을 안내하며 멈춘다.
 # 대시보드 → Settings → Database → SSL Configuration
 supabase/prod-ca-2021.crt
+
+# scripts/build-og-fonts.py 용 파이썬 venv
+/.venv-fonts/

@@ -85,7 +85,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // 정적 자산과 이미지 최적화 경로는 제외한다.
+  // opengraph-image·apple-icon 은 확장자 없는 경로로 나가는 생성 이미지다. 빼지 않으면
+  // 로그인 안 한 크롤러(카톡·슬랙 미리보기)가 /login 으로 튕겨 썸네일이 안 뜬다.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|opengraph-image$|apple-icon$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2)$).*)",
   ],
 };

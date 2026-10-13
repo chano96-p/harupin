@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- 하루핀 앱 아이콘. components/brand/BrandMark.tsx 와 같은 도형이다. -->
+  <rect width="32" height="32" rx="8" fill="#F26A3D"/>
+  <g transform="translate(2.8 2.8) scale(1.1)">
+    <path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0" fill="#fff"/>
+    <circle cx="12" cy="10" r="3" fill="#F26A3D"/>
+  </g>
+</svg>
