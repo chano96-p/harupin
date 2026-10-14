@@ -8,6 +8,7 @@ import { useSwipeReveal } from "@/components/itinerary/hooks/useSwipeReveal";
 import { PlaceDetail } from "@/components/itinerary/PlaceDetail";
 import { CategoryIcon, ChevronUp, StickyNote } from "@/components/ui/icons";
 import { categoryLabel, findCategory } from "@/lib/places/categories";
+import { formatDistance } from "@/lib/places/distance";
 import type { Day, ShownPlace } from "@/lib/trips/types";
 
 /**
@@ -19,6 +20,7 @@ import type { Day, ShownPlace } from "@/lib/trips/types";
  */
 export function PlaceCard({
   place,
+  prevHidden,
   days,
   currentDayId,
   onMoved,
@@ -29,6 +31,8 @@ export function PlaceCard({
   onDelete,
 }: {
   place: ShownPlace;
+  /** 바로 앞 순번이 필터로 가려졌다. 거리는 그 장소에서 잰 값이라 출발 번호를 보여준다. */
+  prevHidden: boolean;
   days: Day[];
   currentDayId: string;
   onMoved: (dayId: string, placeName: string) => void;
@@ -145,6 +149,19 @@ export function PlaceCard({
               </span>
               <span className="text-[11.5px] text-ink-soft">
                 {categoryLabel(place.category)}
+                {place.fromPrevMeters !== null ? (
+                  <>
+                    {" · "}
+                    {prevHidden ? (
+                      `${place.order - 1}번에서 `
+                    ) : (
+                      <span className="sr-only">
+                        {place.order - 1}번 장소에서{" "}
+                      </span>
+                    )}
+                    직선 {formatDistance(place.fromPrevMeters)}
+                  </>
+                ) : null}
               </span>
               {/* 전문은 펼치면 보인다. 버튼 이름으로 긴 메모를 통째로 읽지 않게 숨긴다. */}
               {!expanded && place.memo ? (

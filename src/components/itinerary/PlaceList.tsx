@@ -112,10 +112,13 @@ export function PlaceList({
     >
       <SortableContext items={placeIds} strategy={verticalListSortingStrategy}>
         <ol className="flex flex-col gap-2.25 lg:gap-2.5">
-          {shownPlaces.map((p) => (
+          {shownPlaces.map((p, i) => (
             <PlaceCard
               key={p.id}
               place={p}
+              prevHidden={
+                i === 0 ? p.order > 1 : shownPlaces[i - 1].order !== p.order - 1
+              }
               days={days}
               currentDayId={currentDayId}
               onMoved={onMoved}

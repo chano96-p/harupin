@@ -8,8 +8,9 @@ import { EmptyDay, FilteredEmpty } from "@/components/itinerary/EmptyStates";
 import { useSheetDrag } from "@/components/itinerary/hooks/useSheetDrag";
 import { PlaceList } from "@/components/itinerary/PlaceList";
 import { Plus } from "@/components/ui/icons";
+import { formatDistance } from "@/lib/places/distance";
 import { formatDayDate } from "@/lib/trips/format";
-import type { Day, ShownPlace } from "@/lib/trips/types";
+import type { Day, ShownDay, ShownPlace } from "@/lib/trips/types";
 import type { SheetSnap } from "@/lib/ui/sheet";
 
 /**
@@ -37,7 +38,7 @@ export function ItineraryPanel({
   onMovedPlace,
 }: {
   days: Day[];
-  activeDay: Day;
+  activeDay: ShownDay;
   /** activeDay 에서 카테고리 필터를 거친 장소. 목록·드래그는 이것만 다룬다. */
   shownPlaces: ShownPlace[];
   offCategories: string[];
@@ -58,6 +59,11 @@ export function ItineraryPanel({
   onMovedPlace: (dayId: string, placeName: string) => void;
 }) {
   const filtering = offCategories.length > 0;
+  // 필터와 무관하게 그 Day 의 전체 동선(삭제 대기 제외) 기준이다.
+  const totalMeters = activeDay.places.reduce(
+    (sum, p) => sum + (p.fromPrevMeters ?? 0),
+    0,
+  );
   const { sheetRef, sheetHeight, dragging, toggle, dragHandlers } =
     useSheetDrag({ snap, onSnapChange, minHeight: headHeight });
 
@@ -90,14 +96,19 @@ export function ItineraryPanel({
             onSelect={onSelectDay}
           />
 
-          <div className="hidden items-baseline gap-2 px-6 lg:flex">
-            <span className="text-[18px] font-bold tracking-[-0.02em] text-ink">
+          {/* 날짜는 모바일에선 Day 탭에 이미 있어 데스크톱에서만 보인다.
+              장소 수와 이동 거리는 모바일에도 보인다. */}
+          <div className="flex items-baseline gap-2 px-4 lg:px-6">
+            <span className="hidden text-[18px] font-bold tracking-[-0.02em] text-ink lg:inline">
               {formatDayDate(activeDay.date)}
             </span>
             <span className="text-[12.5px] text-ink-soft">
               {filtering
                 ? `${shownPlaces.length} / ${activeDay.places.length}곳`
                 : `${activeDay.places.length}곳`}
+              {totalMeters >= 10
+                ? ` · 직선 총 ${formatDistance(totalMeters)}`
+                : ""}
             </span>
           </div>
 

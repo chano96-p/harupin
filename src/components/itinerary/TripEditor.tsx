@@ -11,6 +11,7 @@ import { TripHeader } from "@/components/itinerary/TripHeader";
 import { TripSettingsDialog } from "@/components/itinerary/TripSettingsDialog";
 import { MapPanel } from "@/components/map/MapPanel";
 import { Toast } from "@/components/ui/Toast";
+import { straightDistance } from "@/lib/places/distance";
 import type { SelectedPlace } from "@/lib/places/types";
 import type { Day, ShownPlace, Trip } from "@/lib/trips/types";
 import type { SheetSnap } from "@/lib/ui/sheet";
@@ -58,7 +59,11 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
     ...d,
     places: d.places
       .filter((p) => !hiddenIds.includes(p.id))
-      .map((p, i): ShownPlace => ({ ...p, order: i + 1 })),
+      .map((p, i, list): ShownPlace => ({
+        ...p,
+        order: i + 1,
+        fromPrevMeters: i === 0 ? null : straightDistance(list[i - 1], p),
+      })),
   }));
   const activeDay =
     visibleDays.find((d) => d.id === activeDayId) ?? visibleDays[0];

@@ -25,8 +25,17 @@ export type Place = {
   memo: string | null;
 };
 
-/** 화면에 그리는 장소. order 는 삭제 대기를 뺀 방문 순번이고, 카테고리 필터와 무관하다. */
-export type ShownPlace = Place & { order: number };
+/**
+ * 화면에 그리는 장소. order 는 삭제 대기를 뺀 방문 순번이고, 카테고리 필터와 무관하다.
+ * fromPrevMeters 는 바로 앞 순번 장소에서의 직선 거리(첫 장소는 null). 역시 필터와 무관하다.
+ */
+export type ShownPlace = Place & {
+  order: number;
+  fromPrevMeters: number | null;
+};
+
+/** 화면에 그리는 Day. 삭제 대기를 뺀 장소에 순번·거리를 붙였다. */
+export type ShownDay = Omit<Day, "places"> & { places: ShownPlace[] };
 
 /** 홈의 여행 카드. */
 export type TripSummary = {
