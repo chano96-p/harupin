@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import { isDesktop } from "@/lib/ui/breakpoints";
 import {
+  MAP_MIN_HEIGHT,
   SHEET_ORDER,
   SHEET_SNAPS,
   sheetHeightPx,
@@ -15,6 +16,8 @@ const FLICK_VELOCITY = 0.5;
 const FLICK_MAX_PAUSE_MS = 100;
 // 끌기가 끝난 직후 따라오는 click(손잡이 탭 처리)을 무시하는 시간.
 const CLICK_AFTER_DRAG_MS = 300;
+
+export type SheetDrag = ReturnType<typeof useSheetDrag>;
 
 /**
  * 모바일 일정 시트를 손가락으로 끌어 높이를 바꾼다. 놓으면 SHEET_SNAPS 중 한 단계에 붙는다.
@@ -139,10 +142,11 @@ export function useSheetDrag({
   return {
     sheetRef,
     // 데스크톱(lg:h-auto)을 inline height 가 덮지 않도록 CSS 변수로 넘긴다.
+    // 단계 높이는 sheetHeightPx 와 같은 식을 CSS 로 쓴 것이다(화면 회전에도 따라가도록 퍼센트로).
     sheetHeight:
       dragHeight !== null
         ? `${dragHeight}px`
-        : `max(${SHEET_SNAPS[snap] * 100}%, ${minHeight}px)`,
+        : `min(max(${SHEET_SNAPS[snap] * 100}%, ${minHeight}px), calc(100% - ${MAP_MIN_HEIGHT}px))`,
     dragging: dragHeight !== null,
     toggle,
     dragHandlers: {

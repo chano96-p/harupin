@@ -5,7 +5,7 @@ import type { Ref } from "react";
 import { CategoryFilter } from "@/components/itinerary/CategoryFilter";
 import { DayTabs } from "@/components/itinerary/DayTabs";
 import { EmptyDay, FilteredEmpty } from "@/components/itinerary/EmptyStates";
-import { useSheetDrag } from "@/components/itinerary/hooks/useSheetDrag";
+import type { SheetDrag } from "@/components/itinerary/hooks/useSheetDrag";
 import { PlaceList } from "@/components/itinerary/PlaceList";
 import { Plus } from "@/components/ui/icons";
 import { formatDistance } from "@/lib/places/distance";
@@ -17,6 +17,7 @@ import type { SheetSnap } from "@/lib/ui/sheet";
  * Day 탭 + 그 Day 의 장소 리스트.
  * 모바일은 지도 위 바텀시트(1b), lg 부터는 좌측 고정 패널(1a).
  * 모바일 시트 높이는 끌어서 바꾸고, 놓으면 lib/ui/sheet 의 단계 중 하나에 붙는다.
+ * 끌기 상태(sheet)는 TripEditor 가 가진다. 지도도 같은 높이(--sheet-h)를 보고 시트 위까지만 차지한다.
  */
 export function ItineraryPanel({
   days,
@@ -29,9 +30,8 @@ export function ItineraryPanel({
   focusedId,
   onFocusPlace,
   snap,
-  onSnapChange,
+  sheet,
   headRef,
-  headHeight,
   onAddPlace,
   onDeletePlace,
   onReorderPlaces,
@@ -48,10 +48,9 @@ export function ItineraryPanel({
   focusedId: string | null;
   onFocusPlace: (placeId: string | null) => void;
   snap: SheetSnap;
-  onSnapChange: (snap: SheetSnap) => void;
-  /** 시트 머리. TripEditor 가 높이를 재서 headHeight 로 돌려준다(peek 하한·지도 여백). */
+  sheet: SheetDrag;
+  /** 시트 머리. TripEditor 가 높이를 재서 peek 하한으로 쓴다. */
   headRef: Ref<HTMLDivElement>;
-  headHeight: number;
   onAddPlace: () => void;
   onDeletePlace: (placeId: string) => void;
   onReorderPlaces: (placeIds: string[]) => void;
@@ -64,13 +63,11 @@ export function ItineraryPanel({
     (sum, p) => sum + (p.fromPrevMeters ?? 0),
     0,
   );
-  const { sheetRef, sheetHeight, dragging, toggle, dragHandlers } =
-    useSheetDrag({ snap, onSnapChange, minHeight: headHeight });
+  const { sheetRef, dragging, toggle, dragHandlers } = sheet;
 
   return (
     <section
       ref={sheetRef}
-      style={{ "--sheet-h": sheetHeight } as React.CSSProperties}
       className={`absolute inset-x-0 bottom-0 flex h-(--sheet-h) flex-col overflow-hidden rounded-t-[22px] border-t border-line bg-canvas shadow-[0_-8px_28px_-6px_rgb(49_37_28/0.12)] ${dragging ? "" : "transition-[height] duration-200"} lg:static lg:h-auto lg:overflow-visible lg:w-[42%] lg:max-w-130 lg:flex-none lg:rounded-none lg:border-t-0 lg:border-r lg:shadow-none lg:transition-none`}
     >
       {/* 시트 머리(손잡이·탭·필터)를 세로로 끌면 시트 높이가 바뀐다. 가로 스크롤은 그대로 둔다. */}

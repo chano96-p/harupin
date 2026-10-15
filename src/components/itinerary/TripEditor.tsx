@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useElementHeight } from "@/components/itinerary/hooks/useElementHeight";
 import { usePendingDelete } from "@/components/itinerary/hooks/usePendingDelete";
 import { useOptimisticOrder } from "@/components/itinerary/hooks/useOptimisticOrder";
+import { useSheetDrag } from "@/components/itinerary/hooks/useSheetDrag";
 import { ItineraryPanel } from "@/components/itinerary/ItineraryPanel";
 import { SearchOverlay } from "@/components/itinerary/SearchOverlay";
 import { TripHeader } from "@/components/itinerary/TripHeader";
@@ -20,8 +21,12 @@ import type { SheetSnap } from "@/lib/ui/sheet";
  * 일정 편집 화면. 시안 1a(데스크톱 스플릿 뷰) / 1b(모바일 지도 + 바텀시트).
  *
  * 지도는 하나만 띄운다. 브레이크포인트마다 따로 두면 Maps 로드가 두 번 과금된다.
- * 모바일에서는 지도가 전면에 깔리고 패널이 그 위에 시트로 뜨며,
+ * 모바일에서는 패널이 아래쪽 시트로 뜨고 지도는 그 위 남은 칸을 차지하며,
  * lg 부터는 같은 두 요소가 좌우 스플릿으로 배치된다.
+ *
+ * 모바일 지도를 시트 밑까지 깔지 않는다. Google 로고·저작권 표기가 지도 왼쪽 아래에 붙는데,
+ * 이를 가리는 것은 Maps Platform 정책 위반이다("Never remove, hide, obscure").
+ * 대가로 시트를 끄는 동안 지도 크기가 매 프레임 바뀐다.
  */
 export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
   const [activeDayId, setActiveDayId] = useState(days[0]?.id ?? "");
@@ -34,9 +39,14 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
   // 꺼둔 카테고리(시안 1a 필터 칩). Day 를 바꿔도 유지한다.
   const [offCategories, setOffCategories] = useState<string[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
-  // 모바일 시트 머리 높이. peek 가 이보다 작아지지 않게 하고, 지도도 그만큼 비운다.
+  // 모바일 시트 머리 높이. peek 가 이보다 작아지지 않게 한다.
   const sheetHeadRef = useRef<HTMLDivElement>(null);
   const sheetHeadHeight = useElementHeight(sheetHeadRef);
+  const sheet = useSheetDrag({
+    snap: sheetSnap,
+    onSnapChange: setSheetSnap,
+    minHeight: sheetHeadHeight,
+  });
   // 저장은 폼이 사라진 뒤(다른 장소 선택)에도 끝까지 진행된다.
   // 늦게 끝난 저장이 그사이 고른 장소와 보던 탭을 덮지 않도록, 완료 시점의 선택과 비교한다.
   const selectedIdRef = useRef<string | null>(null);
@@ -114,13 +124,18 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
         placeCount={days.reduce((n, d) => n + d.places.length, 0)}
       />
 
-      <div className="relative min-h-0 flex-1 lg:flex">
-        <div className="absolute inset-0 lg:relative lg:inset-auto lg:order-2 lg:flex-1">
+      {/* --sheet-h: 모바일 시트 높이. 시트는 이 높이를 갖고, 지도는 그 위에서 끝난다. */}
+      <div
+        style={{ "--sheet-h": sheet.sheetHeight } as React.CSSProperties}
+        className="relative min-h-0 flex-1 lg:flex"
+      >
+        <div
+          className={`absolute inset-x-0 top-0 bottom-(--sheet-h) ${sheet.dragging ? "" : "transition-[bottom] duration-200"} lg:relative lg:inset-auto lg:order-2 lg:flex-1 lg:transition-none`}
+        >
           <MapPanel
             pins={shownPlaces}
             selected={selected}
             focusedId={focusedId}
-            sheet={{ snap: sheetSnap, minHeight: sheetHeadHeight }}
           />
           <SearchOverlay
             tripId={trip.id}
@@ -155,9 +170,8 @@ export function TripEditor({ trip, days }: { trip: Trip; days: Day[] }) {
             focusedId={focusedId}
             onFocusPlace={setFocusedPlaceId}
             snap={sheetSnap}
-            onSnapChange={setSheetSnap}
+            sheet={sheet}
             headRef={sheetHeadRef}
-            headHeight={sheetHeadHeight}
             onAddPlace={focusSearch}
             onDeletePlace={requestDelete}
             onMovedPlace={(dayId, placeName) => {
